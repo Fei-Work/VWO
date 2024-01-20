@@ -54,8 +54,8 @@ int main(int argc, char **argv)
     vector<double> vWheelEncoderLeft;
     vector<double> vWheelEncoderRight;
     vector<double> vTimestampsEncoder;
-    string img_strFile = string(argv[4])+"/sensor_data/encoder.csv";
-    LoadEncoder(img_strFile, vWheelEncoderLeft, vWheelEncoderRight, vTimestampsEncoder);
+    string encoder_strFile = string(argv[4])+"/sensor_data/encoder.csv";
+    LoadEncoder(encoder_strFile, vWheelEncoderLeft, vWheelEncoderRight, vTimestampsEncoder);
     int nEncoder = vWheelEncoderLeft.size();
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
@@ -166,6 +166,33 @@ void LoadImages(const string &strFile,  vector<string> &vstrImageLeft, vector<st
             s_right = "/image/stereo_right/" + s + ".png";
             vstrImageLeft.push_back(s_left);
             vstrImageRight.push_back(s_right);
+        }
+    }
+}
+
+
+void LoadEncoder(const string &strFile, vector<double> &vWheelEncoderLeft, vector<double> &vWheelEncoderRight, vector<double> &vTimestamps){
+    ifstream f;
+    f.open(strFile.c_str());
+    string line;
+    // Read the timetamps and filenames 
+    while (getline(f, line)) {
+        istringstream iss(line);
+        string token;
+        vector<double> numbers;
+
+        while (getline(iss, token, ',')) {
+            // 将字符串转换为 double 并存储
+            numbers.push_back(std::stod(token));
+        }
+        if(numbers.size() == 3)
+        {
+            vTimestamps.push_back(numbers[0]);
+            vWheelEncoderLeft.push_back(numbers[1]);
+            vWheelEncoderRight.push_back(numbers[2]);
+        }
+        else {
+            std::cerr << "Error: Each line should contain three numbers." << std::endl;
         }
     }
 }

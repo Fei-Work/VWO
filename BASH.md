@@ -19,6 +19,7 @@ evo_rpe tum /home/liu/SLAM_WORK/evo/test/global_poseTUM.txt /home/liu/SLAM_WORK/
 ./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/KITTI00-02.yaml /media/liu/KINGSTON/Kitti/data_odometry_gray/dataset/00
 
 ./Examples/Stereo/stereo_kitti Vocabulary/ORBvoc.txt Examples/Stereo/KITTI00-02.yaml /media/liu/KINGSTON/Kitti/data_odometry_gray/dataset/01
+
 ### evo
 evo_traj kitti --ref=/media/liu/KINGSTON/Kitti/dataset/poses/01.txt /home/liu/SLAM_WORK/ORB_SLAM2/result/2024-01-14_15:17:14/TrajectoryKITTI.txt -a  -p
 evo_ape kitti /media/liu/KINGSTON/Kitti/dataset/poses/01.txt /home/liu/SLAM_WORK/ORB_SLAM2/result/2024-01-14_15:17:14/TrajectoryKITTI.txt -r full -va --plot --plot_mode xz  

@@ -57,8 +57,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
         cout << "Stereo" << endl;
     else if(mSensor==RGBD)
         cout << "RGB-D" << endl;
-    else if(mSensor==WHEEL)
-        cout << "WHEEL" << endl;
+    else if(mSensor==WHEEL_STEREO)
+        cout << "WHEEL_STEREO" << endl;
 
     //Check settings file 
     //cv::FileStorage

@@ -35,9 +35,9 @@ void LoadEncoder(const string &strFile, vector<double> &vWheelEncoderLeft, vecto
 
 int main(int argc, char **argv)
 {
-    if(argc != 5)
+    if(argc != 4)
     {
-        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_imgs_settings path_to_wheel_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_sequence" << endl;
         return 1;
     }
 
@@ -46,7 +46,7 @@ int main(int argc, char **argv)
     vector<string> vstrImageRight;
     vector<double> vTimestampsCam;
    
-    string img_strFile = string(argv[4])+"/sensor_data/stereo_stamp.csv";
+    string img_strFile = string(argv[3])+"/sensor_data/stereo_stamp.csv";
     LoadImages(img_strFile, vstrImageLeft, vstrImageRight, vTimestampsCam);
     int nImages = vstrImageLeft.size();
 
@@ -54,13 +54,16 @@ int main(int argc, char **argv)
     vector<double> vWheelEncoderLeft;
     vector<double> vWheelEncoderRight;
     vector<double> vTimestampsEncoder;
-    string encoder_strFile = string(argv[4])+"/sensor_data/encoder.csv";
+    string encoder_strFile = string(argv[3])+"/sensor_data/encoder.csv";
     LoadEncoder(encoder_strFile, vWheelEncoderLeft, vWheelEncoderRight, vTimestampsEncoder);
     int nEncoder = vWheelEncoderLeft.size();
 
+    // wheel_count用于统计之后读取的wheel位置
+    int wheel_count = 0;
+
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     // 初始化各个线程，localmapping、loopClosing处于waiting姿态（分别为等待关键帧）
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::WHEEL_STEREO,true);
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -69,9 +72,11 @@ int main(int argc, char **argv)
     cout << endl << "-------" << endl;
     cout << "Start processing sequence ..." << endl;
     cout << "Images in the sequence: " << nImages << endl << endl;
+    cout << "WheelEncoder in the sequence: " << nEncoder << endl << endl;
 
     // Main loop
     cv::Mat imLeft, imRight, left_BGR, right_BGR, left_GRAY, right_GRAY;
+    vector<ORB_SLAM2::WHEEL::PulseCount> vWheelMeas;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
@@ -91,11 +96,23 @@ int main(int argc, char **argv)
         cv::cvtColor(left_BGR, left_GRAY, cv::COLOR_BGR2GRAY);
         cv::cvtColor(right_BGR, right_GRAY, cv::COLOR_BGR2GRAY);
 
+        //get wheel encoder during this time
+        vWheelMeas.clear();
+
+        while(vTimestampsEncoder[wheel_count] <= tframe){
+            vWheelMeas.push_back(ORB_SLAM2::WHEEL::PulseCount(vWheelEncoderLeft[wheel_count], vWheelEncoderRight[wheel_count]));
+            wheel_count++;
+        }
+        
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
-        // Pass the image to the SLAM system
-        SLAM.TrackStereo(left_BGR,right_BGR,tframe);
+        // Pass the image and wheel to the SLAM system
+        // todo 在track过程中，应在该处加入判断语句是否使用轮子
+        SLAM.TrackStereo(left_GRAY, right_GRAY, vWheelMeas, tframe);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
+
+
+
 
         double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 

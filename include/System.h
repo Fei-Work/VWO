@@ -30,6 +30,7 @@
 // #include <iostream>
 #include <opencv2/core/core.hpp>
 
+#include "WheelEncoder.h"
 #include "Tracking.h"
 #include "FrameDrawer.h"
 #include "MapDrawer.h"
@@ -70,6 +71,11 @@ public:
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
     // Returns the camera pose (empty if tracking fails).
     cv::Mat TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timestamp);
+
+    // 对TrackStereo进行的重载，将WheelStereo嵌入双目功能，其中
+    // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
+    // Returns the camera pose (empty if tracking fails).
+    cv::Mat TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const vector<WHEEL::PulseCount> &vWheelMeas, const double &timestamp);
 
     // Process the given rgbd frame. Depthmap must be registered to the RGB frame.
     // Input image: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -121,7 +127,7 @@ public:
     // See format details at: http://www.cvlibs.net/datasets/kitti/eval_odometry.php
     void SaveTrajectoryKITTI();
 
-    // TODO: Save/Load functions
+    // Save/Load functions
     // SaveMap(const string &filename);
     // LoadMap(const string &filename);
     void SetUserComand();

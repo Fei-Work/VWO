@@ -30,6 +30,7 @@
 #include"Map.h"
 #include"LocalMapping.h"
 #include"LoopClosing.h"
+#include "WheelEncoder.h"
 #include"Frame.h"
 #include "ORBVocabulary.h"
 #include"KeyFrameDatabase.h"
@@ -185,6 +186,7 @@ protected:
     cv::Mat mK;
     cv::Mat mDistCoef;
     float mbf;
+    WHEEL::Calib * mpCalib;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;

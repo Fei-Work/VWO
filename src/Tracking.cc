@@ -24,6 +24,7 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
+#include"WheelEncoder.h"
 #include"ORBmatcher.h"
 #include"FrameDrawer.h"
 #include"Converter.h"
@@ -114,8 +115,26 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     else
         cout << "- color order: BGR (ignored if grayscale)" << endl;
 
-    // Load ORB parameters
 
+    // Load Wheel parameters
+
+    if(mSensor == System::WHEEL_STEREO){
+        
+        float eResolution = fSettings["Encoder.resolution"];
+        float eLeftWheelDiameter = fSettings["Encoder.leftWheelDiameter"];
+        float eRightWheelDiameter = fSettings["Encoder.rightWheelDiameter"];
+        float eWheelBase = fSettings["Encoder.wheelBase"];
+        mpCalib = new WHEEL::Calib(eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
+
+        cout << endl << "Wheel parameters: "<< endl;
+        cout << "- resolution: " << eResolution << endl;
+        cout << "- leftWheelDiameter: " << eLeftWheelDiameter << endl;
+        cout << "- rightWheelDiameter: " << eRightWheelDiameter << endl;
+        cout << "- wheelBase: " << eWheelBase << endl;
+    }
+
+
+    // Load ORB parameters
     int nFeatures = fSettings["ORBextractor.nFeatures"];
 
     // fScaleFactor与nLevels用于金字塔提取
@@ -128,7 +147,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     // 从单目拓展至双目以及深度相机
     mpORBextractorLeft = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
-    if(sensor==System::STEREO)
+    if(sensor==System::STEREO || sensor==System::WHEEL_STEREO)
         mpORBextractorRight = new ORBextractor(nFeatures,fScaleFactor,nLevels,fIniThFAST,fMinThFAST);
 
     if(sensor==System::MONOCULAR)
@@ -141,7 +160,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     cout << "- Initial Fast Threshold: " << fIniThFAST << endl;
     cout << "- Minimum Fast Threshold: " << fMinThFAST << endl;
 
-    if(sensor==System::STEREO || sensor==System::RGBD)
+    if(sensor==System::STEREO || sensor==System::WHEEL_STEREO || sensor==System::RGBD)
     {
         mThDepth = mbf*(float)fSettings["ThDepth"]/fx;
         cout << endl << "Depth Threshold (Close/Far Points): " << mThDepth << endl;

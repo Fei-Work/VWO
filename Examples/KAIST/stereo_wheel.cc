@@ -31,25 +31,32 @@
 using namespace std;
 
 void LoadImages(const string &strFile, vector<string> &vstrImageLeft, vector<string> &vstrImageRight, vector<double> &vTimestamps);
-void LoadEncoder(const string &strFile);
+void LoadEncoder(const string &strFile, vector<double> &vWheelEncoderLeft, vector<double> &vWheelEncoderRight, vector<double> &vTimestamps);
 
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    if(argc != 5)
     {
-        cerr << endl << "Usage: ./mono_CULD path_to_vocabulary path_to_imgs_settings path_to_imgs_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_imgs_settings path_to_wheel_settings path_to_sequence" << endl;
         return 1;
     }
 
-    // Retrieve paths to images
+    // load images
     vector<string> vstrImageLeft;
     vector<string> vstrImageRight;
-
-    vector<double> vTimestamps;
-    string strFile = string(argv[3])+"/sensor_data/stereo_stamp.csv";
-    LoadImages(strFile, vstrImageLeft, vstrImageRight, vTimestamps);
-
+    vector<double> vTimestampsCam;
+   
+    string img_strFile = string(argv[4])+"/sensor_data/stereo_stamp.csv";
+    LoadImages(img_strFile, vstrImageLeft, vstrImageRight, vTimestampsCam);
     int nImages = vstrImageLeft.size();
+
+    // load wheel_encoder
+    vector<double> vWheelEncoderLeft;
+    vector<double> vWheelEncoderRight;
+    vector<double> vTimestampsEncoder;
+    string img_strFile = string(argv[4])+"/sensor_data/encoder.csv";
+    LoadEncoder(img_strFile, vWheelEncoderLeft, vWheelEncoderRight, vTimestampsEncoder);
+    int nEncoder = vWheelEncoderLeft.size();
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     // 初始化各个线程，localmapping、loopClosing处于waiting姿态（分别为等待关键帧）
@@ -70,7 +77,7 @@ int main(int argc, char **argv)
         // Read image from file
         imLeft = cv::imread(string(argv[3]) + vstrImageLeft[ni],cv::IMREAD_GRAYSCALE);
         imRight = cv::imread(string(argv[3]) + vstrImageRight[ni],cv::IMREAD_GRAYSCALE);
-        double tframe = vTimestamps[ni];
+        double tframe = vTimestampsCam[ni];
 
         if(imLeft.empty())
         {
@@ -97,9 +104,9 @@ int main(int argc, char **argv)
         // Wait to load the next frame // 手动设置帧数，所以记得要对其时间单位
         double T=0;
         if(ni<nImages-1)
-            T = vTimestamps[ni+1]-tframe;
+            T = vTimestampsCam[ni+1]-tframe;
         else if(ni>0)
-            T = tframe-vTimestamps[ni-1];
+            T = tframe-vTimestampsCam[ni-1];
         
         T = T/1e10; //适用于该数据集的时间对齐到s        
         if(ttrack<T)

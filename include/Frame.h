@@ -48,8 +48,26 @@ public:
     // Copy constructor.
     Frame(const Frame &frame);
 
-    // Constructor for stereo cameras.
+
+
+    // Constructor for stereo cameras.  为双目相机准备的构造函数
+    /**
+     * @brief 为双目相机准备的构造函数
+     * 
+     * @param[in] imLeft            左目图像
+     * @param[in] imRight           右目图像
+     * @param[in] timeStamp         时间戳
+     * @param[in] extractorLeft     左目图像特征点提取器句柄
+     * @param[in] extractorRight    右目图像特征点提取器句柄
+     * @param[in] voc               ORB字典句柄
+     * @param[in] K                 相机内参矩阵
+     * @param[in] distCoef          相机去畸变参数
+     * @param[in] bf                相机基线长度和焦距的乘积
+     * @param[in] thDepth           远点和近点的深度区分阈值
+     *  
+     */
     Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+
 
     // Constructor for RGB-D cameras.
     Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const double &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);

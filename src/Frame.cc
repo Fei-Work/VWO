@@ -75,6 +75,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
     mvInvLevelSigma2 = mpORBextractorLeft->GetInverseScaleSigmaSquares();
 
     // ORB extraction
+    // 提取ORB时进行了双线程的处理
     thread threadLeft(&Frame::ExtractORB,this,0,imLeft);
     thread threadRight(&Frame::ExtractORB,this,1,imRight);
     threadLeft.join();
@@ -87,6 +88,7 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeSt
 
     UndistortKeyPoints();
 
+    // 进行匹配的运算
     ComputeStereoMatches();
 
     mvpMapPoints = vector<MapPoint*>(N,static_cast<MapPoint*>(NULL));    
@@ -570,7 +572,13 @@ void Frame::ComputeStereoMatches()
             vector<float> vDists;
             vDists.resize(2*L+1);
 
-            const float iniu = scaleduR0+L-w;
+            // 计算滑动窗口滑动范围的边界，因为是块匹配，还要算上图像块的尺寸
+            // 列方向起点 iniu = r0 - 最大窗口滑动范围 - 图像块尺寸
+            // 列方向终点 eniu = r0 + 最大窗口滑动范围 + 图像块尺寸 + 1
+            // 此次 + 1 和下面的提取图像块是列坐标+1是一样的，保证提取的图像块的宽是2 * w + 1
+            // ! 源码： const float iniu = scaleduR0+L-w; 错误
+            // scaleduR0：右图特征点x坐标
+            const float iniu = scaleduR0-L-w;
             const float endu = scaleduR0+L+w+1;
             if(iniu<0 || endu >= mpORBextractorRight->mvImagePyramid[kpL.octave].cols)
                 continue;

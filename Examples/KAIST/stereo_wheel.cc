@@ -106,13 +106,9 @@ int main(int argc, char **argv)
         
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
         // Pass the image and wheel to the SLAM system
-        // todo 在track过程中，应在该处加入判断语句是否使用轮子
         SLAM.TrackStereo(left_GRAY, right_GRAY, vWheelMeas, tframe);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
-
-
-
 
         double ttrack= std::chrono::duration_cast<std::chrono::duration<double> >(t2 - t1).count();
 
@@ -129,11 +125,11 @@ int main(int argc, char **argv)
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
         
-        //todo: 检查是否即刻停止并保存结果
+        // 检查是否即刻停止并保存结果
         if(SLAM.CheckUserComand()){
             break;
         }
-    }
+    } // end of for(main loop)
 
     // Stop all threads
     SLAM.Shutdown();

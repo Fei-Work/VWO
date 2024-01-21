@@ -134,7 +134,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
 {
     if(mSensor!=STEREO)
     {
-        cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO." << endl;
+        cerr << "ERROR: you called TrackStereo but input sensor was not set to STEREO or check your parameters." << endl;
         exit(-1);
     }   
 
@@ -182,7 +182,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     return Tcw;
 }
 
-// 增加新功能
+// 增加Wheel_Encoder track 功能
 cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const vector<WHEEL::PulseCount> &vWheelMeas, const double &timestamp)
 {
     if(mSensor!=WHEEL_STEREO)
@@ -225,6 +225,8 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     }
     }
 
+
+    mpTracker->GrabWheelEncoder(vWheelMeas);
     // 对每个输入的图像正式开始tracking
     cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
 

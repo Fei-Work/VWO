@@ -62,6 +62,7 @@ public:
     cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
     cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
     cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
+    void GrabWheelEncoder(const vector<WHEEL::PulseCount> vWheelMeas);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -84,7 +85,8 @@ public:
         NO_IMAGES_YET=0,
         NOT_INITIALIZED=1,
         OK=2,
-        LOST=3
+        LOST=3,
+        DETERIORATION=4 // 设定视觉退化状态，此时Tracking由WheelOdemetry短暂接手
     };
 
     eTrackingState mState;
@@ -96,6 +98,9 @@ public:
     // Current Frame
     Frame mCurrentFrame;
     cv::Mat mImGray;
+    vector<int> vWheelMeasleft;   // During the time
+    vector<int> vWheelMeasright;
+
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;

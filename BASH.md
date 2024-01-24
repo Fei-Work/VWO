@@ -9,6 +9,11 @@
 ./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_38.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban38-pankyo
 
 ./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_38.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban39-pankyo
+
+### wheel
+./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban39-pankyo
+
+
 ### evo
 evo_traj tum --ref=/home/liu/SLAM_WORK/evo/test/global_poseTUM.txt /home/liu/SLAM_WORK/evo/test/KeyframeTrajectoryTUMchange.txt -a  -p
 

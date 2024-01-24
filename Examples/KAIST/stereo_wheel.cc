@@ -100,7 +100,7 @@ int main(int argc, char **argv)
         vWheelMeas.clear();
 
         while(vTimestampsEncoder[wheel_count] <= tframe){
-            vWheelMeas.push_back(ORB_SLAM2::WHEEL::PulseCount(vWheelEncoderLeft[wheel_count], vWheelEncoderRight[wheel_count]));
+            vWheelMeas.push_back(ORB_SLAM2::WHEEL::PulseCount(vTimestampsEncoder[wheel_count], vWheelEncoderLeft[wheel_count], vWheelEncoderRight[wheel_count]));
             wheel_count++;
         }
         

@@ -56,7 +56,7 @@ void Viewer::Run()
     mbFinished = false;
     mbStopped = false;
 
-    pangolin::CreateWindowAndBind("ORB-SLAM2: Map Viewer",1024,768);
+    pangolin::CreateWindowAndBind("VWO: Map Viewer",1024,768);
 
     // 3D Mouse handler requires depth testing to be enabled
     glEnable(GL_DEPTH_TEST);
@@ -77,12 +77,20 @@ void Viewer::Run()
     pangolin::Var<bool> menuFinishAndSave("menu.FinishAndSave",false,false);
 
     // Define Camera Render Object (for view / scene browsing)
+    // 定义相机投影模型：ProjectionMatrix(w, h, fu, fv, u0, v0, zNear, zFar)
+    // 定义观测方位向量：观测点位置：(mViewpointX mViewpointY mViewpointZ)
+    //                观测目标位置：(0, 0, 0)
+    //                观测的方位向量：(0.0,-1.0, 0.0)
     pangolin::OpenGlRenderState s_cam(
                 pangolin::ProjectionMatrix(1024,768,mViewpointF,mViewpointF,512,389,0.1,1000),
                 pangolin::ModelViewLookAt(mViewpointX,mViewpointY,mViewpointZ, 0,0,0,0.0,-1.0, 0.0)
                 );
 
     // Add named OpenGL viewport to window and provide 3D Handler
+    // 定义显示面板大小，orbslam中有左右两个面板，昨天显示一些按钮，右边显示图形
+    // 前两个参数（0.0, 1.0）表明宽度和面板纵向宽度和窗口大小相同
+    // 中间两个参数（pangolin::Attach::Pix(175), 1.0）表明右边所有部分用于显示图形
+    // 最后一个参数（-1024.0f/768.0f）为显示长宽比
     pangolin::View& d_cam = pangolin::CreateDisplay()
             .SetBounds(0.0, 1.0, pangolin::Attach::Pix(175), 1.0, -1024.0f/768.0f)
             .SetHandler(new pangolin::Handler3D(s_cam));
@@ -90,7 +98,7 @@ void Viewer::Run()
     pangolin::OpenGlMatrix Twc;
     Twc.SetIdentity();
 
-    cv::namedWindow("ORB-SLAM2: Current Frame");
+    cv::namedWindow("VWO: Current Frame");
 
     bool bFollow = true;
     bool bLocalizationMode = false;
@@ -106,7 +114,7 @@ void Viewer::Run()
     while(1)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+        //绘制当前相机
         mpMapDrawer->GetCurrentOpenGLCameraMatrix(Twc);
 
         if(menuFollowCamera && bFollow)
@@ -146,7 +154,7 @@ void Viewer::Run()
         pangolin::FinishFrame();
 
         cv::Mat im = mpFrameDrawer->DrawFrame();
-        cv::imshow("ORB-SLAM2: Current Frame",im);
+        cv::imshow("VWO: Current Frame",im);
         cv::waitKey(mT);
 
         if(menuReset)

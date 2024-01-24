@@ -30,7 +30,7 @@
 #include"Map.h"
 #include"LocalMapping.h"
 #include"LoopClosing.h"
-#include "WheelEncoder.h"
+#include"WheelEncoder.h"
 #include"Frame.h"
 #include "ORBVocabulary.h"
 #include"KeyFrameDatabase.h"
@@ -87,6 +87,8 @@ public:
         OK=2,
         LOST=3,
         DETERIORATION=4 // 设定视觉退化状态，此时Tracking由WheelOdemetry短暂接手
+        // todo 关于如何转化为wheel？ 1、匹配到的特征点少的时候； 2、当运行过程处于长时间静止，且偏转角小的时候； 3、当视觉信息大幅度超出掌控时（接手并停止）
+        // todo 以上为先验信息
     };
 
     eTrackingState mState;
@@ -98,8 +100,8 @@ public:
     // Current Frame
     Frame mCurrentFrame;
     cv::Mat mImGray;
-    vector<int> vWheelMeasleft;   // During the time
-    vector<int> vWheelMeasright;
+    vector<WHEEL::PulseCount> vPulseCount;
+    WHEEL::WheelEncoderDatas *WEDpt;
 
 
     // Initialization Variables (Monocular)
@@ -125,6 +127,9 @@ protected:
 
     // Main tracking function. It is independent of the input sensor.
     void Track();
+    
+    // 用于测试
+    void OnlyWheelTrack();
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();
@@ -149,6 +154,8 @@ protected:
 
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
+
+    bool WheelNeedNewKeyFrame();
 
     // In case of performing only localization, this flag is true when there are no matches to
     // points in the map. Still tracking will continue if there are enough matches with temporal points.
@@ -191,7 +198,7 @@ protected:
     cv::Mat mK;
     cv::Mat mDistCoef;
     float mbf;
-    WHEEL::Calib * mpCalib;
+    WHEEL::Calibration* mpCalib;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;
@@ -208,11 +215,12 @@ protected:
     //Current matches in frame
     int mnMatchesInliers;
 
-    //Last Frame, KeyFrame and Relocalisation Info
+    //Last Frame, KeyFrame Last WheelInfo and Relocalisation Info
     KeyFrame* mpLastKeyFrame;
     Frame mLastFrame;
     unsigned int mnLastKeyFrameId;
     unsigned int mnLastRelocFrameId;
+    WHEEL::PulseCount mLastPulseCount;
 
     //Motion Model
     cv::Mat mVelocity;

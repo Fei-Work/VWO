@@ -24,7 +24,6 @@
 #include<opencv2/core/core.hpp>
 #include<opencv2/features2d/features2d.hpp>
 
-#include"WheelEncoder.h"
 #include"ORBmatcher.h"
 #include"FrameDrawer.h"
 #include"Converter.h"
@@ -48,7 +47,7 @@ namespace ORB_SLAM2
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0)
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0),mLastPulseCount(0,0,0)
 
 {
     // Load camera parameters from settings file
@@ -124,7 +123,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         float eLeftWheelDiameter = fSettings["Encoder.leftWheelDiameter"];
         float eRightWheelDiameter = fSettings["Encoder.rightWheelDiameter"];
         float eWheelBase = fSettings["Encoder.wheelBase"];
-        mpCalib = new WHEEL::Calib(eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
+        mpCalib = new WHEEL::Calibration(eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
 
         cout << endl << "Wheel parameters: "<< endl;
         cout << "- resolution: " << eResolution << endl;
@@ -225,7 +224,7 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
         }
     }
 
-
+    // 此步骤已经完成当前帧Frame的初匹配
     mCurrentFrame = Frame(
         mImGray, imGrayRight,
         timestamp,
@@ -234,7 +233,8 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
         mK,mDistCoef,mbf,mThDepth);
 
 
-    Track();
+    // Track();
+    OnlyWheelTrack();
 
     return mCurrentFrame.mTcw.clone();
 }
@@ -296,18 +296,54 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
         mCurrentFrame = Frame(mImGray,timestamp,mpORBextractorLeft,mpORBVocabulary,mK,mDistCoef,mbf,mThDepth);
 
     Track();
+    
 
     return mCurrentFrame.mTcw.clone();
 }
 
 void Tracking::GrabWheelEncoder(const vector<WHEEL::PulseCount> vWheelMeas)
 {
-    for(int i = 0; i<vWheelMeas.size(); i++){
-        vWheelMeasleft.push_back(vWheelMeas[i].WheelLeft);
-        vWheelMeasright.push_back(vWheelMeas[i].WheelRight);
-    }
+    vPulseCount = vWheelMeas;
+    WEDpt = new WHEEL::WheelEncoderDatas(mLastPulseCount, vPulseCount, mpCalib);
 }
 
+
+void Tracking::OnlyWheelTrack()
+{
+    if(mState==NO_IMAGES_YET)
+    {
+        mState = NOT_INITIALIZED;
+    }
+    unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+    // mLastProcessedState 存储了Tracking最新的状态，用于FrameDrawer中的绘制
+    mLastProcessedState=mState;
+    if(mState==NOT_INITIALIZED){
+        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));    
+        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);  
+        if(WheelNeedNewKeyFrame()){
+            CreateNewKeyFrame();
+        }
+        
+        mState=DETERIORATION;
+        mpFrameDrawer->Update(this);
+        mLastFrame = Frame(mCurrentFrame);
+        if(vPulseCount.size()>0)
+            mLastPulseCount = vPulseCount[vPulseCount.size()-1];
+    }
+
+    if(mState == DETERIORATION){
+        mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
+        mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
+        if(WheelNeedNewKeyFrame()){
+            CreateNewKeyFrame();
+        }
+        mpFrameDrawer->Update(this);
+        mLastFrame = Frame(mCurrentFrame);
+        if(vPulseCount.size()>0)
+            mLastPulseCount = vPulseCount[vPulseCount.size()-1];
+    }
+
+}
 
 /*
  * @brief Main tracking function. It is independent of the input sensor.
@@ -329,12 +365,6 @@ void Tracking::Track()
         mState = NOT_INITIALIZED;
     }
 
-    if(mState ==DETERIORATION){
-        // todo 检查特征点匹配现有的数量
-        // todo 如果大于80，则认为其不位于视觉退化状态
-        mState = OK;
-        // todo 如果小于80，则由轮式里程计接管
-    }
 
     // mLastProcessedState 存储了Tracking最新的状态，用于FrameDrawer中的绘制
     mLastProcessedState=mState;
@@ -376,9 +406,9 @@ void Tracking::Track()
             // Local Mapping is activated. This is the normal behaviour, unless
             // you explicitly activate the "only tracking" mode.
 
-            // Step 2：跟踪进入正常SLAM模式，有地图更新
+            // Step 2：跟踪进入正常SLAM模式，有地图更新 [此处即寻找哪种方式的T初始值以及进行最近帧的匹配点优化]
             // 是否正常跟踪
-            if(mState==OK)
+            if(mState==OK || mState==DETERIORATION)
             {
                 // Local Mapping might have changed some MapPoints tracked in last frame
                 // Step 2.1 检查并更新上一帧被替换的MapPoints
@@ -436,9 +466,6 @@ void Tracking::Track()
                     if(!mVelocity.empty())
                     {
                         bOK = TrackWithMotionModel();
-                        // ? 为了和前面模式统一，这个地方是不是应该加上
-                        // if(!bOK)
-                        //    bOK = TrackReferenceKeyFrame();
                     }
                     else
                     {
@@ -637,7 +664,7 @@ void Tracking::Track()
         // 保存上一帧的数据,当前帧变上一帧
         mLastFrame = Frame(mCurrentFrame);
     }
-
+    
     // Store frame pose information to retrieve the complete camera trajectory afterwards.
     // Step 11：记录位姿信息，用于最后保存所有的轨迹
     if(!mCurrentFrame.mTcw.empty())
@@ -917,6 +944,7 @@ void Tracking::CheckReplacedInLastFrame()
 bool Tracking::TrackReferenceKeyFrame()
 {
     // Compute Bag of Words vector
+    // Step 1：将当前帧的描述子转化为BoW向量
     mCurrentFrame.ComputeBoW();
 
     // We perform first an ORB matching with the reference keyframe
@@ -924,14 +952,17 @@ bool Tracking::TrackReferenceKeyFrame()
     ORBmatcher matcher(0.7,true);
     vector<MapPoint*> vpMapPointMatches;
 
+    // Step 2：通过词袋BoW加速当前帧与参考帧之间的特征点匹配
     int nmatches = matcher.SearchByBoW(mpReferenceKF,mCurrentFrame,vpMapPointMatches);
 
     if(nmatches<15)
         return false;
 
+    // Step 3:将上一帧的位姿态作为当前帧位姿的初始值
     mCurrentFrame.mvpMapPoints = vpMapPointMatches;
     mCurrentFrame.SetPose(mLastFrame.mTcw);
 
+    // Step 4:通过优化3D-2D的重投影误差来获得位姿
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
@@ -1030,8 +1061,10 @@ bool Tracking::TrackWithMotionModel()
 
     // Update last frame pose according to its reference keyframe
     // Create "visual odometry" points if in Localization Mode
+    // Step 1：更新上一帧的位姿；对于双目或RGB-D相机，还会根据深度值生成临时地图点
     UpdateLastFrame();
 
+    // Step 2：根据之前估计的速度，用恒速模型得到当前帧的初始位姿。
     mCurrentFrame.SetPose(mVelocity*mLastFrame.mTcw);
 
     fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
@@ -1045,6 +1078,7 @@ bool Tracking::TrackWithMotionModel()
     int nmatches = matcher.SearchByProjection(mCurrentFrame,mLastFrame,th,mSensor==System::MONOCULAR);
 
     // If few matches, uses a wider window search
+    // Step 3：用上一帧地图点进行投影匹配，如果匹配点不够，则扩大搜索半径再来一次
     if(nmatches<20)
     {
         fill(mCurrentFrame.mvpMapPoints.begin(),mCurrentFrame.mvpMapPoints.end(),static_cast<MapPoint*>(NULL));
@@ -1055,9 +1089,11 @@ bool Tracking::TrackWithMotionModel()
         return false;
 
     // Optimize frame pose with all matches
+    // Step 4：利用3D-2D投影关系，优化当前帧位姿
     Optimizer::PoseOptimization(&mCurrentFrame);
 
     // Discard outliers
+    // Step 5：剔除地图点中外点
     int nmatchesMap = 0;
     for(int i =0; i<mCurrentFrame.N; i++)
     {
@@ -1087,36 +1123,65 @@ bool Tracking::TrackWithMotionModel()
     return nmatchesMap>=10;
 }
 
+/**
+ * @brief 用局部地图进行跟踪，进一步优化位姿
+ * 
+ * 1. 更新局部地图，包括局部关键帧和关键点
+ * 2. 对局部MapPoints进行投影匹配
+ * 3. 根据匹配对估计当前帧的姿态
+ * 4. 根据姿态剔除误匹配
+ * @return true if success
+ * 
+ * Step 1：更新局部关键帧mvpLocalKeyFrames和局部地图点mvpLocalMapPoints 
+ * Step 2：在局部地图中查找与当前帧匹配的MapPoints, 其实也就是对局部地图点进行跟踪
+ * Step 3：更新局部所有MapPoints后对位姿再次优化
+ * Step 4：更新当前帧的MapPoints被观测程度，并统计跟踪局部地图的效果
+ * Step 5：决定是否跟踪成功
+ */
 bool Tracking::TrackLocalMap()
 {
     // We have an estimation of the camera pose and some map points tracked in the frame.
     // We retrieve the local map and try to find matches to points in the local map.
 
+    // Update Local KeyFrames and Local Points
+    // Step 1：更新局部关键帧 mvpLocalKeyFrames 和局部地图点 mvpLocalMapPoints
     UpdateLocalMap();
 
+    // Step 2：筛选局部地图中新增的在视野范围内的地图点，投影到当前帧搜索匹配，得到更多的匹配关系
     SearchLocalPoints();
 
     // Optimize Pose
+    // 在这个函数之前，在 Relocalization、TrackReferenceKeyFrame、TrackWithMotionModel 中都有位姿优化，
+    // Step 3：前面新增了更多的匹配关系，BA优化得到更准确的位姿
     Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
 
     // Update MapPoints Statistics
+    // Step 4：更新当前帧的地图点被观测程度，并统计跟踪局部地图后匹配数目
     for(int i=0; i<mCurrentFrame.N; i++)
     {
         if(mCurrentFrame.mvpMapPoints[i])
         {
+            // 由于当前帧的地图点可以被当前帧观测到，其被观测统计量加1
             if(!mCurrentFrame.mvbOutlier[i])
             {
+                // 找到该点的帧数mnFound 加 1
                 mCurrentFrame.mvpMapPoints[i]->IncreaseFound();
+                //查看当前是否是在纯定位过程
                 if(!mbOnlyTracking)
                 {
+                    // 如果该地图点被相机观测数目nObs大于0，匹配内点计数+1
+                    // nObs： 被观测到的相机数目，单目+1，双目或RGB-D则+2
                     if(mCurrentFrame.mvpMapPoints[i]->Observations()>0)
                         mnMatchesInliers++;
                 }
                 else
+                    // 记录当前帧跟踪到的地图点数目，用于统计跟踪效果
                     mnMatchesInliers++;
             }
-            else if(mSensor==System::STEREO)
+            // 如果这个地图点是外点,并且当前相机输入还是双目的时候,就删除这个点
+            // ?单目就不管吗
+            else if(mSensor==System::STEREO)  
                 mCurrentFrame.mvpMapPoints[i] = static_cast<MapPoint*>(NULL);
 
         }
@@ -1124,15 +1189,33 @@ bool Tracking::TrackLocalMap()
 
     // Decide if the tracking was succesful
     // More restrictive if there was a relocalization recently
+    // Step 5：根据跟踪匹配数目及重定位情况决定是否跟踪成功
+    // 如果最近刚刚发生了重定位,那么至少成功匹配50个点才认为是成功跟踪
     if(mCurrentFrame.mnId<mnLastRelocFrameId+mMaxFrames && mnMatchesInliers<50)
         return false;
 
+    
+    if(mnMatchesInliers<=70){
+        cout << "mnMatchesInliers<70"<<endl;
+    }
+    //如果是正常的状态话只要跟踪的地图点大于30个就认为成功了
     if(mnMatchesInliers<30)
         return false;
     else
         return true;
 }
 
+bool Tracking::WheelNeedNewKeyFrame()
+{
+    static int wheelframecount = 0;
+    wheelframecount++;
+    if(wheelframecount%4 ==1){
+        return true;
+    }
+    else{
+        return false;
+    }
+}
 
 bool Tracking::NeedNewKeyFrame()
 {
@@ -1226,12 +1309,14 @@ void Tracking::CreateNewKeyFrame()
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
-
+    cout<<acos(mCurrentFrame.mTcw.at<float>(0,0))/3.1415926*180<<endl;
+    cout<<mCurrentFrame.mTcw.at<float>(0,3)<<"  "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 
     if(mSensor!=System::MONOCULAR)
     {
+        // 根据Tcw计算mRcw、mtcw和mRwc、mOw
         mCurrentFrame.UpdatePoseMatrices();
 
         // We sort points by the measured depth by the stereo/RGBD sensor.

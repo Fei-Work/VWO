@@ -262,6 +262,11 @@ void Frame::SetPose(cv::Mat Tcw)
 
 void Frame::UpdatePoseMatrices()
 { 
+    // mOw：    当前相机光心在世界坐标系下坐标
+    // mTcw：   世界坐标系到相机坐标系的变换矩阵
+    // mRcw：   世界坐标系到相机坐标系的旋转矩阵
+    // mtcw：   世界坐标系到相机坐标系的平移向量
+    // mRwc：   相机坐标系到世界坐标系的旋转矩阵
     mRcw = mTcw.rowRange(0,3).colRange(0,3);
     mRwc = mRcw.t();
     mtcw = mTcw.rowRange(0,3).col(3);

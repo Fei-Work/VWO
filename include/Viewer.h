@@ -68,7 +68,7 @@ private:
     // 1/fps in ms
     double mT;
     float mImageWidth, mImageHeight;
-
+    ///显示窗口的的查看视角,最后一个是相机的焦距
     float mViewpointX, mViewpointY, mViewpointZ, mViewpointF;
 
     bool CheckFinish();

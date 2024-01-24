@@ -85,9 +85,10 @@ void MapDrawer::DrawKeyFrames(const bool bDrawKF, const bool bDrawGraph)
     const float &w = mKeyFrameSize;
     const float h = w*0.75;
     const float z = w*0.6;
-
+    // step 1：取出所有的关键帧
     const vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
 
+    // step 2：显示所有关键帧图标
     if(bDrawKF)
     {
         for(size_t i=0; i<vpKFs.size(); i++)

@@ -73,6 +73,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuShowGraph("menu.Show Graph",true,true);
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
+    pangolin::Var<bool> menuWaitandView("menu.Wait and View",false,true);
     pangolin::Var<bool> menuCapture("menu.Capture",false,false);
     pangolin::Var<bool> menuFinishAndSave("menu.FinishAndSave",false,false);
 
@@ -170,6 +171,7 @@ void Viewer::Run()
             menuFollowCamera = true;
             mpSystem->Reset();
             menuReset = false;
+            menuWaitandView = false;
         }
 
         /*
@@ -210,8 +212,14 @@ void Viewer::Run()
                 usleep(3000);
             }
         }
-        
 
+        if(menuWaitandView){
+            mpSystem->SetWaitComand(true);           
+        }
+        else{
+            mpSystem->SetWaitComand(false);     
+        }
+        
         if(menuFinishAndSave){
             mpSystem->SetUserComand();
             SetFinish();

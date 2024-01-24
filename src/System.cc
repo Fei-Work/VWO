@@ -39,7 +39,8 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
                mbReset(false),
                mbActivateLocalizationMode(false),
                mbDeactivateLocalizationMode(false),
-               mbStopAndSave(false)
+               mbStopAndSave(false),
+               mbWaitAndView(false)
 
 {
     // Output welcome message
@@ -225,7 +226,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     }
     }
 
-
+    // 获取wheel meas信息
     mpTracker->GrabWheelEncoder(vWheelMeas);
     // 对每个输入的图像正式开始tracking
     cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
@@ -234,6 +235,11 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     mTrackingState = mpTracker->mState;
     mTrackedMapPoints = mpTracker->mCurrentFrame.mvpMapPoints;
     mTrackedKeyPointsUn = mpTracker->mCurrentFrame.mvKeysUn;
+
+    // 检查是否即刻停止并保存结果
+    while(CheckWaitComand()){
+        usleep(100000);
+    }
     return Tcw;
 }
 
@@ -592,7 +598,7 @@ void System::SaveTrajectoryKITTI()
     cout << endl << "trajectory saved!" << endl;
 }
 
-// todo: 检查是否即刻停止且保存结果
+
 void System::SetUserComand()
 {
     unique_lock<mutex> lock(mMutexmbStopAndSave);
@@ -603,6 +609,18 @@ bool System::CheckUserComand()
 {
     unique_lock<mutex> lock(mMutexmbStopAndSave);
     return mbStopAndSave;
+}
+
+void System::SetWaitComand(bool tag)
+{
+    unique_lock<mutex> lock(mMutexmbStopAndSave);
+    mbWaitAndView = tag;
+}
+
+bool System::CheckWaitComand()
+{
+    unique_lock<mutex> lock(mMutexmbWaitAndView);
+    return mbWaitAndView;
 }
 
 

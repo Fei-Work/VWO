@@ -130,8 +130,14 @@ public:
     // Save/Load functions
     // SaveMap(const string &filename);
     // LoadMap(const string &filename);
+
+    // 设置检查是否即刻停止且保存结果
     void SetUserComand();
     bool CheckUserComand();
+
+    // 设置检查是否处于等待状态
+    void SetWaitComand(bool tag);
+    bool CheckWaitComand();
 
     // Information from most recent processed frame
     // You can call this right after TrackMonocular (or stereo or RGBD)
@@ -192,9 +198,13 @@ private:
     std::vector<cv::KeyPoint> mTrackedKeyPointsUn;
     std::mutex mMutexState;
 
-    // todo: 检查是否即刻停止并保存结果
+    // 检查是否即刻停止并保存结果
     std::mutex mMutexmbStopAndSave;
     bool mbStopAndSave;
+
+    // 检查是否即刻停止并保存结果
+    std::mutex mMutexmbWaitAndView;
+    bool mbWaitAndView;
 
     string ResultDirName;
 };

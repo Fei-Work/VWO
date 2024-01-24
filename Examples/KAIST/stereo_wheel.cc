@@ -125,6 +125,7 @@ int main(int argc, char **argv)
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
         
+        //
         // 检查是否即刻停止并保存结果
         if(SLAM.CheckUserComand()){
             break;

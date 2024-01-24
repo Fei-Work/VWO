@@ -21,15 +21,16 @@ WheelEncoderDatas::WheelEncoderDatas(const PulseCount mLastPulseCount, const std
     double pi = M_PI;
 
     if(vPcSize>=1){
+        // 此处设置为0的主要原因为可能视频数据到位前wheel还没开启
         if(mLastPulseCount.time == 0){
             during_time = (vPc[vPcSize-1].time -  vPc[0].time)/pow(10,9);
             left_ditance = (vPc[vPcSize-1].WheelLeft - vPc[0].WheelLeft)/Resolution * pi * LeftWheelDiameter;
-            right_distance = (vPc[vPcSize-1].WheelRight - vPc[0].WheelRight)/Resolution * pi * LeftWheelDiameter;
+            right_distance = (vPc[vPcSize-1].WheelRight - vPc[0].WheelRight)/Resolution * pi * RightWheelDiameter;
         }
         else{
-            during_time = (vPc[vPcSize-1].time - mLastPulseCount.WheelLeft)/pow(10,9);
+            during_time = (vPc[vPcSize-1].time - mLastPulseCount.time)/pow(10,9);
             left_ditance = (vPc[vPcSize-1].WheelLeft - mLastPulseCount.WheelLeft)/Resolution * pi * LeftWheelDiameter;
-            right_distance = (vPc[vPcSize-1].WheelRight - mLastPulseCount.WheelRight)/Resolution * pi * LeftWheelDiameter;
+            right_distance = (vPc[vPcSize-1].WheelRight - mLastPulseCount.WheelRight)/Resolution * pi * RightWheelDiameter;
         }
 
         left_velocity = left_ditance/during_time;
@@ -54,6 +55,7 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
 {
     Eigen::Matrix<double,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3));
     Eigen::Matrix<double,3,1> Lastt = Converter::toVector3d(LastTwc.rowRange(0,3).col(3));
+    
     WheelBaseTranst(0) = 0;
     WheelBaseTranst(1) = 0;
     WheelBaseTranst(2) = -base_velocity * during_time;
@@ -62,7 +64,7 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
     Eigen::Matrix<double,3,3> NewPoseR;
 
     Eigen::Vector3d axis(0, 1.0, 0);
-    double base_theta = 0-base_w * during_time;
+    double base_theta = base_w * during_time;
     Eigen::AngleAxis rotation(base_theta, axis);
     WheelBaseTransR = rotation.toRotationMatrix();
     NewPoseR = WheelBaseTransR*LastR ;

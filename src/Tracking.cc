@@ -317,6 +317,7 @@ void Tracking::OnlyWheelTrack()
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
     // mLastProcessedState 存储了Tracking最新的状态，用于FrameDrawer中的绘制
     mLastProcessedState=mState;
+    
     if(mState==NOT_INITIALIZED){
         mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));    
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);  
@@ -342,6 +343,13 @@ void Tracking::OnlyWheelTrack()
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
     }
+    cout.precision(4);
+    double time = 0;
+    if(vPulseCount.size()>0){
+        time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+018)/pow(10,9);
+    }
+    cout<<"Time:"<<time<<", theta:"<<acos(mCurrentFrame.mTcw.at<float>(0,0));
+    cout<<", (Tx,Ty):"<<mCurrentFrame.mTcw.at<float>(0,3)<<"  "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
 
 }
 
@@ -1309,8 +1317,6 @@ void Tracking::CreateNewKeyFrame()
         return;
 
     KeyFrame* pKF = new KeyFrame(mCurrentFrame,mpMap,mpKeyFrameDB);
-    cout<<acos(mCurrentFrame.mTcw.at<float>(0,0))/3.1415926*180<<endl;
-    cout<<mCurrentFrame.mTcw.at<float>(0,3)<<"  "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 

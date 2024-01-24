@@ -13,6 +13,7 @@ Examples/Stereo/stereo_euroc
 Examples/Stereo/stereo_kitti
 Examples/KAIST/mono
 Examples/KAIST/stereo
+Examples/KAIST/stereo_wheel
 KeyFrameTrajectory.txt
 Thirdparty/DBoW2/build/
 Thirdparty/DBoW2/lib/

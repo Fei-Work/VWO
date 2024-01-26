@@ -87,8 +87,8 @@ public:
         OK=2,
         LOST=3,
         DETERIORATION=4 // 设定视觉退化状态，此时Tracking由WheelOdemetry短暂接手
-        // todo 关于如何转化为wheel？ 1、匹配到的特征点少的时候； 2、当运行过程处于长时间静止，且偏转角小的时候； 3、当视觉信息大幅度超出掌控时（接手并停止）
-        // todo 以上为先验信息
+        // 
+        // todo 1. 匹配到的特征点少的时候； 2. 当运行过程处于长时间静止，且偏转角小的时候； 3. 当视觉信息大幅度超出掌控时（接手并停止）。以上为先验信息
     };
 
     eTrackingState mState;
@@ -128,8 +128,11 @@ protected:
     // Main tracking function. It is independent of the input sensor.
     void Track();
     
-    // 用于测试
+    // Only Wheel track 用于测试
     void OnlyWheelTrack();
+
+    //  轮式协同低特征状态的视觉
+    void TrackWithWheel();
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();
@@ -155,6 +158,7 @@ protected:
     bool NeedNewKeyFrame();
     void CreateNewKeyFrame();
 
+    bool CheckChooseWheel();
     bool WheelNeedNewKeyFrame();
 
     // In case of performing only localization, this flag is true when there are no matches to

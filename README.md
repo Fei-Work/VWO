@@ -1,3 +1,10 @@
+# VWO
+**Main work:** Add the wheel odometry on the ORB-SLAM to add the robust and accuracy on the complex city environment.
+
+**Additional:** 
+1. delete only odometry mode
+2. add the pause function to observe at any time
+3. add the save function to save the cam and trajority result 
 # ORB-SLAM2
 **Authors:** [Raul Mur-Artal](http://webdiis.unizar.es/~raulmur/), [Juan D. Tardos](http://webdiis.unizar.es/~jdtardos/), [J. M. M. Montiel](http://webdiis.unizar.es/~josemari/) and [Dorian Galvez-Lopez](http://doriangalvez.com/) ([DBoW2](https://github.com/dorian3d/DBoW2))
 

@@ -64,7 +64,7 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
     Eigen::Matrix<double,3,3> NewPoseR;
 
     Eigen::Vector3d axis(0, 1.0, 0);
-    double base_theta = base_w * during_time;
+    double base_theta = -base_w * during_time;
     Eigen::AngleAxis rotation(base_theta, axis);
     WheelBaseTransR = rotation.toRotationMatrix();
     NewPoseR = WheelBaseTransR*LastR ;

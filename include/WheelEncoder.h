@@ -44,6 +44,7 @@ public:
     double left_ditance;
     double right_distance;
     double left_velocity;
+    double distance;
     double right_velocity;
     double base_velocity;
     double base_w;

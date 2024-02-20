@@ -32,6 +32,7 @@ WheelEncoderDatas::WheelEncoderDatas(const PulseCount mLastPulseCount, const std
             left_ditance = (vPc[vPcSize-1].WheelLeft - mLastPulseCount.WheelLeft)/Resolution * pi * LeftWheelDiameter;
             right_distance = (vPc[vPcSize-1].WheelRight - mLastPulseCount.WheelRight)/Resolution * pi * RightWheelDiameter;
         }
+        distance = (left_ditance + right_distance)/2;
 
         left_velocity = left_ditance/during_time;
         right_velocity = right_distance/during_time;
@@ -81,6 +82,7 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
     cvMat.at<float>(3, 1) = 0;
     cvMat.at<float>(3, 2) = 0;
     cvMat.at<float>(3, 3) = 1;
+
     return cvMat.clone();
 
 }

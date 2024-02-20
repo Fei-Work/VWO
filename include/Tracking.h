@@ -103,6 +103,7 @@ public:
     vector<WHEEL::PulseCount> vPulseCount;
     WHEEL::WheelEncoderDatas *WEDpt;
 
+    double tag_dis;
 
     // Initialization Variables (Monocular)
     std::vector<int> mvIniLastMatches;
@@ -129,7 +130,8 @@ protected:
     void Track();
     
     // Only Wheel track 用于测试
-    void OnlyWheelTrack();
+    void WheelTrack();
+    bool OnlyWheelTrack();
 
     //  轮式协同低特征状态的视觉
     void TrackWithWheel();

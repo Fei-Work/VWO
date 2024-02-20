@@ -87,6 +87,11 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
 
 }
 
+void WheelEncoderDatas::clear()
+{
+    
+}
+
 
 Calibration::Calibration(float _eResolution, float _eLeftWheelDiameter, float _eRightWheelDiameter, float _eWheelBase):
     eResolution(_eResolution), eLeftWheelDiameter(_eLeftWheelDiameter),

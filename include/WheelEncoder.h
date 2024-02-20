@@ -39,6 +39,7 @@ public:
     WheelEncoderDatas(const PulseCount mLastPulseCount, const std::vector<PulseCount> vPc, WHEEL::Calibration* WheelCalib);
 
     cv::Mat GetNewPose(const cv::Mat LastTwc);
+    void clear();
 
     double during_time;
     double left_ditance;

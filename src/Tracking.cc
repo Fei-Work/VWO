@@ -461,7 +461,7 @@ void Tracking::TrackWithWheel()
         {
             if(bOK)
             {
-                if((WEDpt->distance - tag_dis)>20)
+                // if((WEDpt->distance - tag_dis)>20)
                     mState = NOT_INITIALIZED;
             }
             else{
@@ -1234,7 +1234,7 @@ bool Tracking::TrackReferenceKeyFrame()
         }
     }
 
-    return nmatchesMap>=10;
+    return nmatchesMap>=60;
 }
 
 void Tracking::UpdateLastFrame()
@@ -1368,7 +1368,7 @@ bool Tracking::TrackWithMotionModel()
         return nmatches>20;
     }
 
-    return nmatchesMap>=10;
+    return nmatchesMap>=60;
 }
 
 /**
@@ -2058,6 +2058,9 @@ void Tracking::Reset()
 
     // Clear Map (this erase MapPoints and KeyFrames)
     mpMap->clear();
+
+    // Clear Wheel encoder
+    WEDpt->clear();
 
     KeyFrame::nNextId = 0;
     Frame::nNextId = 0;

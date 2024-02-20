@@ -459,14 +459,6 @@ void Tracking::TrackWithWheel()
     
         if(!bOK || mState==DETERIORATION)
         {
-            if(bOK)
-            {
-                // if((WEDpt->distance - tag_dis)>20)
-                    mState = NOT_INITIALIZED;
-            }
-            else{
-                tag_dis = WEDpt->distance;
-            }
             cout<<"1"<<endl;
             mState = DETERIORATION;
             bOK = OnlyWheelTrack();

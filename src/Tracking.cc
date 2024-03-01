@@ -459,7 +459,7 @@ void Tracking::TrackWithWheel()
     
         if(!bOK || mState==DETERIORATION)
         {
-            cout<<"1"<<endl;
+            cout<<"DETERIORATION"<<endl;
             mState = DETERIORATION;
             bOK = OnlyWheelTrack();
         }

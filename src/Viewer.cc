@@ -74,6 +74,7 @@ void Viewer::Run()
     pangolin::Var<bool> menuLocalizationMode("menu.Localization Mode",false,true);
     pangolin::Var<bool> menuReset("menu.Reset",false,false);
     pangolin::Var<bool> menuWaitandView("menu.Wait and View",false,true);
+    pangolin::Var<bool> menuSeeCam("menu.SeeCam",true,true);
     pangolin::Var<bool> menuCapture("menu.Capture",false,false);
     pangolin::Var<bool> menuFinishAndSave("menu.FinishAndSave",false,false);
 
@@ -154,9 +155,15 @@ void Viewer::Run()
 
         pangolin::FinishFrame();
 
-        cv::Mat im = mpFrameDrawer->DrawFrame();
-        cv::imshow("VWO: Current Frame",im);
-        cv::waitKey(mT);
+        if(menuSeeCam)
+        {
+            cv::Mat im = mpFrameDrawer->DrawFrame();
+            cv::imshow("VWO: Current Frame",im);
+            cv::waitKey(mT);
+        }
+        else{
+            cv::destroyAllWindows();
+        }
 
         if(menuReset)
         {
@@ -179,6 +186,7 @@ void Viewer::Run()
         */
         if (menuCapture) 
         {
+            cv::Mat im = mpFrameDrawer->DrawFrame();
             if (!capture_writer.isOpened()) {
                 capture_writer.open(capture_filename, cv::VideoWriter::fourcc('H', '2', '6', '4'), 1e3/mT, cv::Size(im.cols, im.rows));
             }

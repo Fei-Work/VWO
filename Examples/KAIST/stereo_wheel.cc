@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 {
     if(argc != 4)
     {
-        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_sequence" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence" << endl;
         return 1;
     }
 
@@ -46,8 +46,58 @@ int main(int argc, char **argv)
     vector<string> vstrImageRight;
     vector<double> vTimestampsCam;
    
-    string img_strFile = string(argv[3])+"/sensor_data/stereo_stamp.csv";
+    string img_strFile = string(argv[3])+"/sensor_data/stereo_stamp_new.csv";
     LoadImages(img_strFile, vstrImageLeft, vstrImageRight, vTimestampsCam);
+
+    if(vstrImageLeft.empty() || vstrImageRight.empty())
+    {
+        cerr << "ERROR: No images in provided path." << endl;
+        return 1;
+    }
+
+    if(vstrImageLeft.size()!=vstrImageRight.size())
+    {
+        cerr << "ERROR: Different number of left and right images." << endl;
+        return 1;
+    }
+
+    // Read rectification parameters
+    cv::FileStorage fsSettings(argv[2], cv::FileStorage::READ);
+    if(!fsSettings.isOpened())
+    {
+        cerr << "ERROR: Wrong path to settings" << endl;
+        return -1;
+    }
+
+    cv::Mat K_l, K_r, P_l, P_r, R_l, R_r, D_l, D_r;
+    fsSettings["LEFT.K"] >> K_l;
+    fsSettings["RIGHT.K"] >> K_r;
+
+    fsSettings["LEFT.P"] >> P_l;
+    fsSettings["RIGHT.P"] >> P_r;
+
+    fsSettings["LEFT.R"] >> R_l;
+    fsSettings["RIGHT.R"] >> R_r;
+
+    fsSettings["LEFT.D"] >> D_l;
+    fsSettings["RIGHT.D"] >> D_r;
+
+    int rows_l = fsSettings["LEFT.height"];
+    int cols_l = fsSettings["LEFT.width"];
+    int rows_r = fsSettings["RIGHT.height"];
+    int cols_r = fsSettings["RIGHT.width"];
+
+    if(K_l.empty() || K_r.empty() || P_l.empty() || P_r.empty() || R_l.empty() || R_r.empty() || D_l.empty() || D_r.empty() ||
+            rows_l==0 || rows_r==0 || cols_l==0 || cols_r==0)
+    {
+        cerr << "ERROR: Calibration parameters to rectify stereo are missing!" << endl;
+        return -1;
+    }
+
+    cv::Mat M1l,M2l,M1r,M2r;
+    cv::initUndistortRectifyMap(K_l,D_l,R_l,P_l.rowRange(0,3).colRange(0,3),cv::Size(cols_l,rows_l),CV_32F,M1l,M2l);
+    cv::initUndistortRectifyMap(K_r,D_r,R_r,P_r.rowRange(0,3).colRange(0,3),cv::Size(cols_r,rows_r),CV_32F,M1r,M2r);
+
     int nImages = vstrImageLeft.size();
 
     // load wheel_encoder
@@ -75,7 +125,7 @@ int main(int argc, char **argv)
     cout << "WheelEncoder in the sequence: " << nEncoder << endl << endl;
 
     // Main loop
-    cv::Mat imLeft, imRight, left_BGR, right_BGR, left_GRAY, right_GRAY;
+    cv::Mat imLeft, imRight, left_BGR, right_BGR, left_GRAY, right_GRAY, imLeftRect, imRightRect;
     vector<ORB_SLAM2::WHEEL::PulseCount> vWheelMeas;
     for(int ni=0; ni<nImages; ni++)
     {
@@ -90,11 +140,21 @@ int main(int argc, char **argv)
                  << string(argv[3]) << "/" << vstrImageLeft[ni] << endl;
             return 1;
         }
+        if(imRight.empty())
+        {
+            cerr << endl << "Failed to load image at: "
+                 << string(vstrImageRight[ni]) << endl;
+            return 1;
+        }
 
         cv::cvtColor(imLeft, left_BGR, cv::COLOR_BayerRG2BGR);
         cv::cvtColor(imRight, right_BGR, cv::COLOR_BayerRG2BGR);
-        cv::cvtColor(left_BGR, left_GRAY, cv::COLOR_BGR2GRAY);
-        cv::cvtColor(right_BGR, right_GRAY, cv::COLOR_BGR2GRAY);
+
+        // cv::cvtColor(left_BGR, left_GRAY, cv::COLOR_BGR2GRAY);
+        // cv::cvtColor(right_BGR, right_GRAY, cv::COLOR_BGR2GRAY);
+
+        cv::remap(left_BGR,imLeftRect,M1l,M2l,cv::INTER_LINEAR);
+        cv::remap(right_BGR,imRightRect,M1r,M2r,cv::INTER_LINEAR);
 
         //get wheel encoder during this time
         vWheelMeas.clear();
@@ -106,7 +166,7 @@ int main(int argc, char **argv)
         
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
         // Pass the image and wheel to the SLAM system
-        SLAM.TrackStereo(left_GRAY, right_GRAY, vWheelMeas, tframe);
+        SLAM.TrackStereo(imLeftRect, imRightRect, vWheelMeas, tframe);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 

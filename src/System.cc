@@ -44,11 +44,27 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
 
 {
     // Output welcome message
-    cout << endl <<
-    "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl <<
-    "This program comes with ABSOLUTELY NO WARRANTY;" << endl  <<
-    "This is free software, and you are welcome to redistribute it" << endl <<
-    "under certain conditions. See LICENSE.txt." << endl << endl;
+    // cout << endl <<
+    // "ORB-SLAM2 Copyright (C) 2014-2016 Raul Mur-Artal, University of Zaragoza." << endl <<
+    // "This program comes with ABSOLUTELY NO WARRANTY;" << endl  <<
+    // "This is free software, and you are welcome to redistribute it" << endl <<
+    // "under certain conditions. See LICENSE.txt." << endl << endl;
+    ResultDirName = "";
+    dirName1st = "result";
+    if(strSettingsFile.length()>5)
+    {
+        size_t lastSlash = strSettingsFile.find_last_of("/");
+        std::string fileName = strSettingsFile.substr(lastSlash + 1);
+        size_t extensionPos = fileName.find(".yaml");
+        if (extensionPos != std::string::npos) {
+            fileName = fileName.substr(0, extensionPos);
+        }
+        dirName2nd = fileName;
+    }
+    else{
+        cout<< "Error strSettingsFile name";
+        exit(-1);
+    }
 
     cout << "Input sensor was set to: ";
 
@@ -71,9 +87,6 @@ System::System(const string &strVocFile, const string &strSettingsFile, const eS
        cerr << "Failed to open settings file at: " << strSettingsFile << endl;
        exit(-1);
     }
-
-    CreateResultDir();
-
 
     //Load ORB Vocabulary
     cout << endl << "Loading ORB Vocabulary. This could take a while..." << endl;
@@ -396,46 +409,39 @@ void System::Shutdown()
     }
 
     if(mpViewer)
-        pangolin::BindToContext("ORB-SLAM2: Map Viewer");
+        pangolin::BindToContext("VWO: Map Viewer");
 }
 
 void System::CreateResultDir()
 {
+    if(ResultDirName.length()!=0)
+        return;
     // 判断结果文件夹是否存在
-	string dirName("result");
-	fs::path url(dirName);
+	// string dirName("result");
+	fs::path url(dirName1st);
 	if (!fs::exists(url)) {
 		cout<< "result not exist" << "\n";
         // 创建单层目录
-	    bool okey = fs::create_directory(dirName);
-	    cout << "create_directory(" << dirName << "), result=" << okey << "\n";
+	    bool okey = fs::create_directory(dirName1st);
+	    cout << "create_directory(" << dirName1st << "), result=" << okey << "\n";
 	}
 	else {
 		cout << "directory'result' exist" << "\n";
 	}
 
-    // 获取当前时间点
-    auto currentTime = std::chrono::system_clock::now();
-
-    // 将时间点转换为 C 语言时间结构
-    std::time_t currentTime_t = std::chrono::system_clock::to_time_t(currentTime);
-    struct std::tm* currentTimeInfo = std::localtime(&currentTime_t);
-    std::stringstream stime;
-    stime << std::put_time(currentTimeInfo, "%Y-%m-%d_%H:%M:%S");
-    string expDirName = dirName + "/" + stime.str() + "/";
-    ResultDirName = expDirName;
     //检查二级目录
-    fs::path url2(expDirName);
+    fs::path url2(dirName1st + "/"+ dirName2nd);
     if (!fs::exists(url2)) {
-		cout << expDirName << "not exist" << "\n";
+		cout << dirName1st + "/"+ dirName2nd << "not exist" << "\n";
         // 创建单层目录
-	    bool okey = fs::create_directory(expDirName);
-	    cout << "create_directory(" << expDirName << "), result=" << okey << "\n";
+	    bool okey = fs::create_directory(dirName1st + "/"+ dirName2nd);
+	    cout << "create_directory(" << dirName1st + "/"+ dirName2nd << "), result=" << okey << "\n";
 	}
 	else {
-		cout << "directory:" << expDirName << " exist" << "\n";
+		cout << "directory:" << dirName1st + "/"+ dirName2nd << " exist" << "\n";
 	}
 
+    ResultDirName = dirName1st + "/" + dirName2nd + "/" ;
 }
 
 string System::GetResultDir()
@@ -445,6 +451,7 @@ string System::GetResultDir()
 
 void System::SaveTrajectoryTUM()
 {
+    CreateResultDir();
     string filename = ResultDirName + "TrajectoryTUM.txt";
     cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
     if(mSensor==MONOCULAR)
@@ -507,6 +514,7 @@ void System::SaveTrajectoryTUM()
 
 void System::SaveKeyFrameTrajectoryTUM()
 {
+    CreateResultDir();
     string filename = ResultDirName + "KeyframeTrajectoryTUM.txt";
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
 
@@ -544,6 +552,7 @@ void System::SaveKeyFrameTrajectoryTUM()
 
 void System::SaveTrajectoryKITTI()
 {
+    CreateResultDir();
     string filename = ResultDirName + "TrajectoryKITTI.txt";
     cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
     if(mSensor==MONOCULAR)

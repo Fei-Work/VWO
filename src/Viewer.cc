@@ -179,6 +179,9 @@ void Viewer::Run()
             mpSystem->Reset();
             menuReset = false;
             menuWaitandView = false;
+            menuSeeCam=true ;
+            menuCapture= false;
+            menuFinishAndSave = false;
         }
 
         /*

@@ -206,6 +206,8 @@ private:
     std::mutex mMutexmbWaitAndView;
     bool mbWaitAndView;
 
+    string dirName1st;
+    string dirName2nd;
     string ResultDirName;
 };
 

@@ -240,7 +240,10 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
     }
 
     // 获取wheel meas信息
-    mpTracker->GrabWheelEncoder(vWheelMeas);
+    if(mSensor==WHEEL_STEREO){
+        mpTracker->GrabWheelEncoder(vWheelMeas);
+    }
+    
     // 对每个输入的图像正式开始tracking
     cv::Mat Tcw = mpTracker->GrabImageStereo(imLeft,imRight,timestamp);
 

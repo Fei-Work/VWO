@@ -234,8 +234,8 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
 
 
     // Track();
-    TrackWithWheel();
-    // WheelTrack();
+    // TrackWithWheel();
+    WheelTrack();
 
     return mCurrentFrame.mTcw.clone();
 }

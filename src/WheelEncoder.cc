@@ -39,6 +39,15 @@ WheelEncoderDatas::WheelEncoderDatas(const PulseCount mLastPulseCount, const std
 
         base_velocity = (left_velocity + right_velocity)/2;
         base_w = (left_velocity - right_velocity)/WheelBase;
+
+        WheelBaseTranst(0) = 0;
+        WheelBaseTranst(1) = 0;
+        WheelBaseTranst(2) = -base_velocity * during_time;
+
+        Eigen::Vector3d axis(0, 1.0, 0);
+        double base_theta = -base_w * during_time;
+        Eigen::AngleAxis rotation(base_theta, axis);
+        WheelBaseTransR = rotation.toRotationMatrix();
     }
     else{
         during_time = 0;
@@ -57,31 +66,12 @@ cv::Mat WheelEncoderDatas::GetNewPose(const cv::Mat LastTwc)
     Eigen::Matrix<double,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3));
     Eigen::Matrix<double,3,1> Lastt = Converter::toVector3d(LastTwc.rowRange(0,3).col(3));
     
-    WheelBaseTranst(0) = 0;
-    WheelBaseTranst(1) = 0;
-    WheelBaseTranst(2) = -base_velocity * during_time;
-
-
-    Eigen::Matrix<double,3,3> NewPoseR;
-
-    Eigen::Vector3d axis(0, 1.0, 0);
-    double base_theta = -base_w * during_time;
-    Eigen::AngleAxis rotation(base_theta, axis);
-    WheelBaseTransR = rotation.toRotationMatrix();
-    NewPoseR = WheelBaseTransR*LastR ;
-
+    // 通过读取 WheelBaseTransR 与 WheelBaseTransP （预积分值）得到新的位姿数据
+    Eigen::Matrix<double,3,3> NewPoseR = WheelBaseTransR * LastR;
     Eigen::Matrix<double,3,1> NewPoset = WheelBaseTransR * Lastt + WheelBaseTranst;
 
-    cv::Mat cvMat(4,4,CV_32F);
-    for(int i=0;i<3;i++){
-        for(int j=0; j<3; j++)
-            cvMat.at<float>(i,j)=NewPoseR(i,j);
-        cvMat.at<float>(i,3)=NewPoset(i);
-    }
-    cvMat.at<float>(3, 0) = 0;
-    cvMat.at<float>(3, 1) = 0;
-    cvMat.at<float>(3, 2) = 0;
-    cvMat.at<float>(3, 3) = 1;
+    // 转化为opencv格式的T
+    cv::Mat cvMat = Converter::toCvSE3(NewPoseR, NewPoset);
 
     return cvMat.clone();
 

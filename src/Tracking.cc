@@ -173,7 +173,9 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         else
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
-
+    if(sensor==System::WHEEL_STEREO)
+        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated();
+    
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -223,15 +225,23 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
             cvtColor(imGrayRight,imGrayRight,CV_BGRA2GRAY);
         }
     }
-
+    if(mState == NO_IMAGES_YET){
+        mCurrentFrame = Frame(
+            mImGray, imGrayRight,
+            timestamp,
+            mpORBextractorLeft,mpORBextractorRight,
+            mpORBVocabulary,
+            mK,mDistCoef,mbf,mThDepth,NULL);
+    }
+    else{
     // 此步骤已经完成当前帧Frame的初匹配
-    mCurrentFrame = Frame(
-        mImGray, imGrayRight,
-        timestamp,
-        mpORBextractorLeft,mpORBextractorRight,
-        mpORBVocabulary,
-        mK,mDistCoef,mbf,mThDepth);
-
+        mCurrentFrame = Frame(
+            mImGray, imGrayRight,
+            timestamp,
+            mpORBextractorLeft,mpORBextractorRight,
+            mpORBVocabulary,
+            mK,mDistCoef,mbf,mThDepth,&mLastFrame);
+    }
 
     // Track();
     // TrackWithWheel();
@@ -302,10 +312,15 @@ cv::Mat Tracking::GrabImageMonocular(const cv::Mat &im, const double &timestamp)
     return mCurrentFrame.mTcw.clone();
 }
 
-void Tracking::GrabWheelEncoder(const vector<WHEEL::PulseCount> vWheelMeas)
+void Tracking::GrabWheelEncoder(const vector<WHEEL::PulseCount> &vWheelMeas)
 {
     vPulseCount = vWheelMeas;
     WEDpt = new WHEEL::WheelEncoderDatas(mLastPulseCount, vPulseCount, mpCalib);
+
+    if(mSensor == System::WHEEL_STEREO)
+        for(int wheel_i = 0; wheel_i < vWheelMeas.size(); wheel_i++){
+            mlQueueWheelData.push_back(vWheelMeas[wheel_i]);
+        }
 }
 
 
@@ -318,6 +333,11 @@ void Tracking::WheelTrack()
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
     // mLastProcessedState 存储了Tracking最新的状态，用于FrameDrawer中的绘制
     mLastProcessedState=mState;
+
+    if(mSensor==System::WHEEL_STEREO)
+    {
+        PreintegrateWheel();
+    }
     
     if(mState==NOT_INITIALIZED){
         mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));    
@@ -331,10 +351,12 @@ void Tracking::WheelTrack()
         mLastFrame = Frame(mCurrentFrame);
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
+        return;
     }
 
     if(mState == DETERIORATION){
-        mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
+        // mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPost(mLastFrame.mTcw));
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
         if(WheelNeedNewKeyFrame()){
             CreateNewKeyFrame();
@@ -347,7 +369,7 @@ void Tracking::WheelTrack()
     cout.precision(4);
     double time = 0;
     if(vPulseCount.size()>0){
-        time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+018)/pow(10,9);
+        time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+09);
     }
     cout<<"Time:"<<time<<", theta:"<<acos(mCurrentFrame.mTcw.at<float>(0,0));
     cout<<", (Tx,Ty):"<<mCurrentFrame.mTcw.at<float>(0,3)<<"  "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
@@ -373,12 +395,145 @@ bool Tracking::OnlyWheelTrack()
     }
 }
 
+void Tracking::PreintegrateWheel()
+{
+    // Step 1.拿到两两帧之间待处理的预积分数据，组成一个集合
+    // 上一帧不存在,说明两帧之间没有imu数据，不进行预积分
+    if(!mCurrentFrame.mpPrevFrame)
+    {
+        mCurrentFrame.setIntegrated();
+        return;
+    }
+
+    mvWheelFromLastFrame.clear();
+    mvWheelFromLastFrame.reserve(mlQueueWheelData.size());
+    // 没有imu数据,不进行预积分
+    if(mlQueueWheelData.size() == 0)
+    {
+        mCurrentFrame.setIntegrated();
+        return;
+    }
+    int wheel_i = 0;
+
+    // 首先进行数据筛选，将queue中的数据清空
+    while(true)
+    {
+        // 数据还没有时,会等待一段时间,直到mlQueueImuData中有imu数据.一开始不需要等待
+        bool bSleep = false;
+        {
+            if(!mlQueueWheelData.empty())
+            {
+                // 拿到第一个imu数据作为起始数据
+                WHEEL::PulseCount* m = &mlQueueWheelData.front();
+
+                // imu起始数据会比当前帧的前一帧时间戳早,如果相差0.001则舍弃这个imu数据
+                if(m->time<mCurrentFrame.mpPrevFrame->mTimeStamp-0.001)
+                {
+                    mlQueueWheelData.pop_front();
+                }
+                // 同样最后一个的imu数据时间戳也不能理当前帧时间间隔多余0.001
+                else if(m->time<mCurrentFrame.mTimeStamp-0.001)
+                {
+                    mvWheelFromLastFrame.push_back(*m);
+                    mlQueueWheelData.pop_front();
+                }
+                else
+                {
+                    // 得到两帧间的imu数据放入mvImuFromLastFrame中,得到后面预积分的处理数据
+                    mvWheelFromLastFrame.push_back(*m);
+                    break;
+                }
+            }
+            else
+            {
+                break;
+                bSleep = true;
+            }
+        }
+        if(bSleep)
+            usleep(500);
+    }
+
+    // Step 2.对两帧之间进行积分处理
+    // m个imu组数据会有m-1个预积分量
+    const int n = mvWheelFromLastFrame.size()-1;
+    if(n==0){
+        std::cout << "Empty IMU measurements vector!!!\n";
+        return;
+    }
+
+    WHEEL::Preintegrated* pWheelPreintegratedFromLastFrame = new WHEEL::Preintegrated();
+
+    double Resolution = mpCalib->eResolution;
+    double LeftWheelDiameter = mpCalib->eLeftWheelDiameter;
+    double RightWheelDiameter = mpCalib->eRightWheelDiameter;
+    double WheelBase = mpCalib->eWheelBase;
+    for(int i=0; i<n; i++)
+    {
+        double left_ditance, right_distance, left_velocity, right_velocity, base_w, during_time;
+        double pi = M_PI;
+        float tstep;
+        Eigen::Vector3d vel, angVel;
+        Eigen::Matrix3d MatrixR;
+
+        // 预处理
+        vel.setZero();
+
+        during_time = (mvWheelFromLastFrame[i+1].time - mvWheelFromLastFrame[i].time);
+        left_ditance = (mvWheelFromLastFrame[i+1].WheelLeft - mvWheelFromLastFrame[i].WheelLeft)/Resolution * pi * LeftWheelDiameter;
+        right_distance = (mvWheelFromLastFrame[i+1].WheelRight - mvWheelFromLastFrame[i].WheelRight)/Resolution * pi * RightWheelDiameter;
+
+        left_velocity = left_ditance / during_time;
+        right_velocity = right_distance / during_time;
+
+        vel(2) = -(left_velocity + right_velocity)/2;
+        base_w = (left_velocity - right_velocity)/WheelBase;
+
+
+
+
+        // 第一帧数据但不是最后两帧,wheel总帧数大于2
+        if((i==0) && (i<(n-1)))
+        {
+            tstep = mvWheelFromLastFrame[i+1].time - mCurrentFrame.mpPrevFrame->mTimeStamp;
+        }
+        else if(i<(n-1))
+        {
+            // 中间的数据不存在帧的干扰，正常计算
+            tstep = mvWheelFromLastFrame[i+1].time -mvWheelFromLastFrame[i].time;
+        }
+        // 直到倒数第二个imu时刻时，计算过程跟第一时刻类似，都需要考虑帧与imu时刻的关系
+        else if((i>0) && (i==(n-1)))
+        {
+            tstep = mCurrentFrame.mTimeStamp -mvWheelFromLastFrame[i].time;
+        }
+         // 就两个数据时使用第一个时刻的，这种情况应该没有吧，，回头应该试试看
+        else if((i==0) && (i==(n-1)))
+        {
+
+        }
+        // Step 3.依次进行预积分计算
+        // 应该是必存在的吧，一个是相对上一关键帧，一个是相对上一帧
+        // if (!mpWheelPreintegratedFromLastKF)
+        //     cout << "mpWheelPreintegratedFromLastKF does not exist" << endl;
+        // mpWheelPreintegratedFromLastKF->IntegrateNewMeasurement(vel,MatrixR,tstep);
+        pWheelPreintegratedFromLastFrame->IntegrateNewMeasurement(vel,base_w,tstep);
+    }
+
+    // 记录当前预积分的图像帧
+    mCurrentFrame.mpWheelPreintegratedFrame = pWheelPreintegratedFromLastFrame;
+    // mCurrentFrame.mpWheelPreintegrated = mpWheelPreintegratedFromLastKF;
+    mCurrentFrame.mpLastKeyFrame = mpLastKeyFrame;
+
+    mCurrentFrame.setIntegrated();
+}
 /*
  * @brief tracking function. 依赖轮式里程计以及视觉
  *
  * TrackWithWheel包含两部分：估计运动、跟踪局部地图（当符合轮式情况的时候，将使用轮式）
  * 此外，该进程不包含仅追踪
  * 
+ * step 0：车轮预积分
  * Step 1：初始化
  * Step 2：跟踪进程
  * Step 3：记录位姿信息，用于轨迹复现
@@ -392,6 +547,11 @@ void Tracking::TrackWithWheel()
         exit(-1);
     }
 
+    if(mSensor==System::WHEEL_STEREO)
+    {
+        PreintegrateWheel();
+    }
+    
     // mState为tracking的状态，包括 SYSTME_NOT_READY, NO_IMAGE_YET, NOT_INITIALIZED, OK, LOST
     // 如果图像复位过、或者第一次运行，则为NO_IMAGE_YET状态
     if(mState==NO_IMAGES_YET)
@@ -1619,7 +1779,10 @@ void Tracking::CreateNewKeyFrame()
             }
         }
     }
-
+    if (mSensor == System::WHEEL_STEREO)
+    {
+        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated();
+    }
     mpLocalMapper->InsertKeyFrame(pKF);
 
     mpLocalMapper->SetNotStop(false);

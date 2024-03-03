@@ -62,7 +62,7 @@ public:
     cv::Mat GrabImageStereo(const cv::Mat &imRectLeft,const cv::Mat &imRectRight, const double &timestamp);
     cv::Mat GrabImageRGBD(const cv::Mat &imRGB,const cv::Mat &imD, const double &timestamp);
     cv::Mat GrabImageMonocular(const cv::Mat &im, const double &timestamp);
-    void GrabWheelEncoder(const vector<WHEEL::PulseCount> vWheelMeas);
+    void GrabWheelEncoder(const vector<WHEEL::PulseCount> &vWheelMeas);
 
     void SetLocalMapper(LocalMapping* pLocalMapper);
     void SetLoopClosing(LoopClosing* pLoopClosing);
@@ -100,8 +100,14 @@ public:
     // Current Frame
     Frame mCurrentFrame;
     cv::Mat mImGray;
-    vector<WHEEL::PulseCount> vPulseCount;
+
+    std::vector<WHEEL::PulseCount> vPulseCount;
     WHEEL::WheelEncoderDatas *WEDpt;
+
+    std::list<WHEEL::PulseCount> mlQueueWheelData;
+    std::vector<WHEEL::PulseCount> mvWheelFromLastFrame;
+    WHEEL::Preintegrated *mpWheelPreintegratedFromLastKF;
+
 
     double tag_dis;
 
@@ -135,6 +141,8 @@ protected:
 
     //  轮式协同低特征状态的视觉
     void TrackWithWheel();
+
+    void PreintegrateWheel();
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();

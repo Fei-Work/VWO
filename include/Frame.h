@@ -23,12 +23,15 @@
 
 #include<vector>
 
+#include "WheelEncoder.h"
 #include "MapPoint.h"
 #include "Thirdparty/DBoW2/DBoW2/BowVector.h"
 #include "Thirdparty/DBoW2/DBoW2/FeatureVector.h"
 #include "ORBVocabulary.h"
 #include "KeyFrame.h"
 #include "ORBextractor.h"
+
+#include <mutex>
 
 #include <opencv2/opencv.hpp>
 
@@ -64,9 +67,9 @@ public:
      * @param[in] distCoef          相机去畸变参数
      * @param[in] bf                相机基线长度和焦距的乘积
      * @param[in] thDepth           远点和近点的深度区分阈值
-     *  
+     * @param[in] pPrevF            上一帧的Frame
      */
-    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame*pPrevF);
 
 
     // Constructor for RGB-D cameras.
@@ -115,6 +118,10 @@ public:
 
     // Backprojects a keypoint (if stereo/depth info available) into 3D world coordinates.
     cv::Mat UnprojectStereo(const int &i);
+
+    // 设置是否已经完成积分
+    bool wheelIsPreintegrated();
+    void setIntegrated();
 
 public:
     // Vocabulary used for relocalization.
@@ -181,6 +188,14 @@ public:
     // Camera pose.
     cv::Mat mTcw;
 
+    // Wheel preintegration from last keyframe
+    KeyFrame* mpLastKeyFrame;
+    WHEEL::Preintegrated* mpWheelPreintegrated;
+
+    // Pointer to previous frame
+    Frame* mpPrevFrame;
+    WHEEL::Preintegrated* mpWheelPreintegratedFrame;
+
     // Current and Next Frame id.
     static long unsigned int nNextId;
     long unsigned int mnId;
@@ -218,6 +233,9 @@ private:
 
     // Assign keypoints to the grid for speed up feature matching (called in the constructor).
     void AssignFeaturesToGrid();
+
+    bool mbWheelPreintegrated;
+    std::mutex *mpMutexWheel;
 
     // Rotation, translation and camera center
     cv::Mat mRcw;

@@ -138,7 +138,4 @@ add_executable(stereo_wheel
 Examples/KAIST/stereo_wheel.cc)
 target_link_libraries(stereo_wheel ${PROJECT_NAME})
 
-add_executable(stereo_wheel_test
-Examples/KAIST/stereo_wheel_test.cc)
-target_link_libraries(stereo_wheel ${PROJECT_NAME})
 

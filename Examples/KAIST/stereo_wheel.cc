@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         else if(ni>0)
             T = tframe-vTimestampsCam[ni-1];
         
-        T = T/1e10; //适用于该数据集的时间对齐到s        
+        T = T/10; //适用于该数据集的时间对齐到s        
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
         
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
     float totaltime = 0;
     for(int ni=0; ni<nImages; ni++)
     {
-        totaltime+=vTimesTrack[ni];
+        totaltime += vTimesTrack[ni];
     }
     cout << "-------" << endl << endl;
     cout << "median tracking time: " << vTimesTrack[nImages/2] << endl;
@@ -234,7 +234,7 @@ void LoadImages(const string &strFile,  vector<string> &vstrImageLeft, vector<st
             string s_left;
             string s_right;
             ss >> t;
-            vTimestamps.push_back(t);
+            vTimestamps.push_back(t/1e9);
 
             s_left = "/image/stereo_left/" + s + ".png";
             s_right = "/image/stereo_right/" + s + ".png";
@@ -261,7 +261,7 @@ void LoadEncoder(const string &strFile, vector<double> &vWheelEncoderLeft, vecto
         }
         if(numbers.size() == 3)
         {
-            vTimestamps.push_back(numbers[0]);
+            vTimestamps.push_back(numbers[0]/1e9);
             vWheelEncoderLeft.push_back(numbers[1]);
             vWheelEncoderRight.push_back(numbers[2]);
         }

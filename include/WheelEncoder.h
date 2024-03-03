@@ -24,9 +24,14 @@ public:
     float eWheelBase;
 };
 
+class WheelTransferInfo{
+    cv::Mat WheelCamTransfer;
+};
+
 // WheelEncoder measure 
 class PulseCount{
 public:
+    PulseCount();
     PulseCount(double _time, double _WheelLeft, double _WheelRight);
 
     double time;
@@ -34,31 +39,38 @@ public:
     double WheelRight;
 };
 
+class Preintegrated{
+public:
+    Preintegrated();
+    void IntegrateNewMeasurement(const Eigen::Vector3d &velocity, const double &base_w, const float &dt);
+    cv::Mat GetRecentPost(const cv::Mat LastTwc);
+
+    float dT;
+    Eigen::Matrix<double,6,6> C;
+    Eigen::Matrix<double,6,6> Info;
+    Eigen::DiagonalMatrix<double,6> Nga, NgaWalk;
+
+    // Values for the original bias (when integration was computed)
+    Eigen::Matrix3d dR;
+    Eigen::Vector3d dP;
+    Eigen::Vector3d avgA, avgW;
+};
+
+
 class WheelEncoderDatas{
 public:
-    WheelEncoderDatas(const PulseCount mLastPulseCount, const std::vector<PulseCount> vPc, WHEEL::Calibration* WheelCalib);
+    WheelEncoderDatas(const PulseCount mLastPulseCount, std::vector<PulseCount> vPc, WHEEL::Calibration* WheelCalib);
 
     cv::Mat GetNewPose(const cv::Mat LastTwc);
+    
     void clear();
 
     double during_time;
-    double left_ditance;
-    double right_distance;
-    double left_velocity;
     double distance;
-    double right_velocity;
-    double base_velocity;
-    double base_w;
-
+    
     Eigen::Vector3d WheelBaseTranst;
     Eigen::Matrix3d WheelBaseTransR;
 };
-
-class WheelTransferInfo{
-    double WheelCamTransfer;
-};
-
-
 
 
 } // end of WHEEL

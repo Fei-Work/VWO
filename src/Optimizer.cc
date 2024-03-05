@@ -31,6 +31,7 @@
 #include<Eigen/StdVector>
 
 #include "Converter.h"
+#include "Opt_type.h"
 
 #include<mutex>
 
@@ -234,6 +235,51 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
         }
     }
 
+}
+// 只针对wheel
+int Optimizer::PoseOptimizationWheel(Frame *pFrame)
+{
+    // 设置求解器
+    g2o::SparseOptimizer optimizer;
+    g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+
+    g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+
+    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+    optimizer.setAlgorithm(solver);
+
+    // Set Frame vertex
+    g2o::VertexSE3Expmap* vSE3 = new g2o::VertexSE3Expmap();
+    vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+    vSE3->setId(0);
+    vSE3->setFixed(false);
+    optimizer.addVertex(vSE3);
+
+    // Set LastFrame vertex
+    g2o::VertexSE3Expmap* vLastSE3 = new g2o::VertexSE3Expmap();
+    vLastSE3->setEstimate(Converter::toSE3Quat(pFrame->mpPrevFrame->mTcw));
+    vLastSE3->setId(1);
+    vLastSE3->setFixed(true);
+    optimizer.addVertex(vLastSE3);
+    
+    // Set the edge between them
+    EdgeInertial* ei = new EdgeInertial(pFrame->mpWheelPreintegratedFrame);
+    ei->setId(0);
+    ei->setVertex(1,vSE3);
+    ei->setVertex(0,vLastSE3);
+    optimizer.addEdge(ei);
+
+    
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+
+    // Recover optimized pose and return number of inliers
+    g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(1));
+    g2o::SE3Quat SE3quat_recov = vSE3_recov->estimate();
+    cv::Mat pose = Converter::toCvMat(SE3quat_recov);
+    pFrame->SetPose(pose);
+
+    return 1;
 }
 
 int Optimizer::PoseOptimization(Frame *pFrame)

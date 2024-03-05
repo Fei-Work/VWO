@@ -254,7 +254,7 @@ cv::Mat System::TrackStereo(const cv::Mat &imLeft, const cv::Mat &imRight, const
 
     // 检查是否即刻停止并保存结果
     while(CheckWaitComand()){
-        usleep(10000);
+        usleep(100);
     }
     return Tcw;
 }

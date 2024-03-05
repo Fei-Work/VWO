@@ -163,6 +163,9 @@ protected:
     void UpdateLocalKeyFrames();
 
     bool TrackLocalMap();
+    
+    void OptwithWheel();
+    
     void SearchLocalPoints();
 
     bool NeedNewKeyFrame();

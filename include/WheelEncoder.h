@@ -12,6 +12,10 @@
 namespace ORB_SLAM2{
 
 namespace WHEEL{
+
+Eigen::Matrix3d RightJacobianSO3(const Eigen::Vector3d &v);
+Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z);
+
     
 // Calibration Data
 class Calibration{
@@ -50,7 +54,7 @@ public:
     Eigen::Matrix<double,6,6> Info;
     Eigen::DiagonalMatrix<double,6> Nga, NgaWalk;
 
-    // Values for the original bias (when integration was computed)
+    // Values
     Eigen::Matrix3d dR;
     Eigen::Vector3d dP;
     Eigen::Vector3d avgA, avgW;

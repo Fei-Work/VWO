@@ -4,7 +4,7 @@ from tqdm import tqdm
 from scipy.spatial.transform import Rotation
 
 # 指定CSV文件路径
-csv_file_path = '/media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban39-pankyo/global_pose.csv'
+csv_file_path = '/media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan/global_pose.csv'
 
 # 读取CSV文件
 df = pd.read_csv(csv_file_path, header=None)
@@ -34,6 +34,6 @@ new_df[['qw', 'qx', 'qy','qz']] = new_df['quaternion'].str.split(',', expand=Tru
 new_df = new_df.drop('quaternion', axis=1)
 
 # 将新的DataFrame写入为TXT文件
-txt_file_path = '/home/liu/SLAM_WORK/evo/test/global_poseTUM.txt'
+txt_file_path = '/home/liu/SLAM_WORK/evo/26/global_poseTUM.txt'
 new_df.to_csv(txt_file_path, sep=' ', index=False, header=False)
 print('Data has been writen to:' + txt_file_path)

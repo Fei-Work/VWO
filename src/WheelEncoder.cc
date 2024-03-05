@@ -38,6 +38,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
     // 记录平均加速度和角速度
     // avgA = (dT * avgA + dR * acc * dt) / (dT + dt);
     // avgW = (dT * avgW + accW * dt) / (dT + dt);
+    Eigen::Matrix3d rightJ;
 
     Eigen::Vector3d axis(0, 1.0, 0);
     Eigen::AngleAxis rotation(-base_w * dt, axis);
@@ -62,17 +63,9 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
 
     // Compute rotation parts of matrices A and B
     // 补充AB矩阵
-    Eigen::Matrix3d W;
-    W.setZero();
-    W(0,1) = -rotation.axis()(2);
-    W(0,2) = rotation.axis()(1);
-    W(1,2) = -rotation.axis()(0);
-    W = W - W.transpose().eval();
+    Eigen::Vector3d rotationVector = rotation.axis() * rotation.angle();
 
-    double ra = rotation.angle();
-    Eigen::Matrix3d rightJ = sin(ra)/ra * Eigen::Matrix3d::Identity()
-        - W * (1.0 - cos(ra)) / ra
-        + rotation.axis() * rotation.axis().transpose() * (1 - sin(ra)/ra);
+    rightJ = RightJacobianSO3(rotationVector);
     A.block<3, 3>(0, 0) = RotationMatrix.transpose();
     B.block<3, 3>(0, 0) = rightJ * dt;
 
@@ -192,6 +185,26 @@ Calibration::Calibration(float _eResolution, float _eLeftWheelDiameter, float _e
     eResolution(_eResolution), eLeftWheelDiameter(_eLeftWheelDiameter),
     eRightWheelDiameter(_eRightWheelDiameter), eWheelBase(_eWheelBase)
 {}
+
+
+
+Eigen::Matrix3d RightJacobianSO3(const Eigen::Vector3d &v)
+{
+    return RightJacobianSO3(v[0],v[1],v[2]);
+}
+
+Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z)
+{
+    const double d2 = x*x+y*y+z*z;
+    const double d = sqrt(d2);
+
+    Eigen::Matrix3d W;
+    W << 0.0, -z, y,z, 0.0, -x,-y,  x, 0.0;
+    if(d<1e-5)
+        return Eigen::Matrix3d::Identity();
+    else
+        return Eigen::Matrix3d::Identity()*sin(d)/(d) + (1-sin(d)/d)*(W*W+Eigen::Matrix3d::Identity()) + (1-cos(d))/d * W;
+}
 
 }
 }

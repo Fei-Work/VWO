@@ -323,6 +323,10 @@ void Tracking::GrabWheelEncoder(const vector<WHEEL::PulseCount> &vWheelMeas)
         }
 }
 
+void Tracking::OptwithWheel()
+{
+    // Optimizer::PoseOptimizationWheel(&mCurrentFrame);
+}
 
 void Tracking::WheelTrack()
 {
@@ -357,6 +361,8 @@ void Tracking::WheelTrack()
     if(mState == DETERIORATION){
         // mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
         mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPost(mLastFrame.mTcw));
+
+        OptwithWheel();
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
         if(WheelNeedNewKeyFrame()){
             CreateNewKeyFrame();
@@ -378,7 +384,7 @@ void Tracking::WheelTrack()
 bool Tracking::OnlyWheelTrack()
 {
     if(mState == DETERIORATION){
-        mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPost(mLastFrame.mTcw));
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
         // cout.precision(4);

@@ -47,6 +47,7 @@ public:
 
     // 只针对 wheel 用于测试
     int static PoseOptimizationWheel(Frame* pFrame);
+    int static PoseOptimizationWithWheel(Frame *pFrame);
 
     // if bFixScale is true, 6DoF optimization (stereo,rgbd), 7DoF otherwise (mono)
     void static OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* pCurKF,

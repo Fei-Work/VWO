@@ -244,8 +244,8 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
     }
 
     // Track();
-    // TrackWithWheel();
-    WheelTrack();
+    TrackWithWheel();
+    // WheelTrack();
 
     return mCurrentFrame.mTcw.clone();
 }
@@ -1559,7 +1559,8 @@ bool Tracking::TrackLocalMap()
     // Optimize Pose
     // 在这个函数之前，在 Relocalization、TrackReferenceKeyFrame、TrackWithMotionModel 中都有位姿优化，
     // Step 3：前面新增了更多的匹配关系，BA优化得到更准确的位姿
-    Optimizer::PoseOptimization(&mCurrentFrame);
+    // Optimizer::PoseOptimization(&mCurrentFrame);
+    Optimizer::PoseOptimizationWithWheel(&mCurrentFrame);
     mnMatchesInliers = 0;
 
     // Update MapPoints Statistics

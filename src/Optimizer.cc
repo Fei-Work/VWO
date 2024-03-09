@@ -22,6 +22,7 @@
 
 #include "Thirdparty/g2o/g2o/core/block_solver.h"
 #include "Thirdparty/g2o/g2o/core/optimization_algorithm_levenberg.h"
+#include "Thirdparty/g2o/g2o/core/optimization_algorithm_gauss_newton.h"
 #include "Thirdparty/g2o/g2o/solvers/linear_solver_eigen.h"
 #include "Thirdparty/g2o/g2o/types/types_six_dof_expmap.h"
 #include "Thirdparty/g2o/g2o/core/robust_kernel_impl.h"
@@ -241,37 +242,37 @@ int Optimizer::PoseOptimizationWheel(Frame *pFrame)
 {
     // 设置求解器
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+    g2o::BlockSolverX::LinearSolverType* linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
 
-    g2o::BlockSolver_6_3* solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::BlockSolverX* solver_ptr = new g2o::BlockSolverX(linearSolver);
 
-    g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
+    g2o::OptimizationAlgorithmGaussNewton *solver = new g2o::OptimizationAlgorithmGaussNewton(solver_ptr);
     optimizer.setAlgorithm(solver);
-
-    // Set Frame vertex
-    g2o::VertexSE3Expmap* vSE3 = new g2o::VertexSE3Expmap();
-    vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
-    vSE3->setId(0);
-    vSE3->setFixed(false);
-    optimizer.addVertex(vSE3);
+    optimizer.setVerbose(true);
 
     // Set LastFrame vertex
     g2o::VertexSE3Expmap* vLastSE3 = new g2o::VertexSE3Expmap();
     vLastSE3->setEstimate(Converter::toSE3Quat(pFrame->mpPrevFrame->mTcw));
-    vLastSE3->setId(1);
+    vLastSE3->setId(0);
     vLastSE3->setFixed(true);
     optimizer.addVertex(vLastSE3);
-    
+
+    // Set Frame vertex
+    g2o::VertexSE3Expmap* vSE3 = new g2o::VertexSE3Expmap();
+    vSE3->setEstimate(Converter::toSE3Quat(pFrame->mTcw));
+    vSE3->setId(1);
+    vSE3->setFixed(false);
+    optimizer.addVertex(vSE3);
+
     // Set the edge between them
     EdgeInertial* ei = new EdgeInertial(pFrame->mpWheelPreintegratedFrame);
     ei->setId(0);
-    ei->setVertex(1,vSE3);
     ei->setVertex(0,vLastSE3);
+    ei->setVertex(1,vSE3);
     optimizer.addEdge(ei);
 
-    
-    optimizer.initializeOptimization();
-    optimizer.optimize(10);
+    optimizer.initializeOptimization(0);
+    optimizer.optimize(4);
 
     // Recover optimized pose and return number of inliers
     g2o::VertexSE3Expmap* vSE3_recov = static_cast<g2o::VertexSE3Expmap*>(optimizer.vertex(1));
@@ -286,15 +287,15 @@ int Optimizer::PoseOptimizationWheel(Frame *pFrame)
 int Optimizer::PoseOptimizationWithWheel(Frame *pFrame)
 {
     g2o::SparseOptimizer optimizer;
-    g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
+    g2o::BlockSolverX::LinearSolverType * linearSolver;
 
-    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolver_6_3::PoseMatrixType>();
+    linearSolver = new g2o::LinearSolverDense<g2o::BlockSolverX::PoseMatrixType>();
 
-    g2o::BlockSolver_6_3 * solver_ptr = new g2o::BlockSolver_6_3(linearSolver);
+    g2o::BlockSolverX * solver_ptr = new g2o::BlockSolverX(linearSolver);
 
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
     optimizer.setAlgorithm(solver);
-    optimizer.setVerbose(true); //打开调试输出
+    // optimizer.setVerbose(true); //打开调试输出
 
     int nInitialCorrespondences=0;
 
@@ -315,8 +316,8 @@ int Optimizer::PoseOptimizationWithWheel(Frame *pFrame)
     // Set the edge between them
     EdgeInertial* ei = new EdgeInertial(pFrame->mpWheelPreintegratedFrame);
     ei->setId(0);
-    ei->setVertex(1,vSE3);
     ei->setVertex(0,vLastSE3);
+    ei->setVertex(1,vSE3);
     optimizer.addEdge(ei);
     ei->setLevel(0);
 

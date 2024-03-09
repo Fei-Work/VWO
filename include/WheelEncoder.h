@@ -5,6 +5,7 @@
 #include<opencv2/core/core.hpp>
 #include<cmath>
 #include<vector>
+// #include<sophus/se3.hpp>
 
 #include<Converter.h>
 
@@ -28,8 +29,17 @@ public:
     float eWheelBase;
 };
 
-class WheelTransferInfo{
-    cv::Mat WheelCamTransfer;
+class Vehicle2StereoInfo{
+public:
+    Vehicle2StereoInfo(cv::Mat T);
+    cv::Mat GetVehicle2StereoP();
+    Eigen::Matrix3d GetVehicle2StereoR();
+    Eigen::Vector3d GetVehicle2Stereot();
+
+private:
+    cv::Mat P;
+    Eigen::Matrix3d  R;
+    Eigen::Vector3d  t;
 };
 
 // WheelEncoder measure 
@@ -47,7 +57,7 @@ class Preintegrated{
 public:
     Preintegrated();
     void IntegrateNewMeasurement(const Eigen::Vector3d &velocity, const double &base_w, const float &dt);
-    cv::Mat GetRecentPost(const cv::Mat LastTwc);
+    cv::Mat GetRecentPose(const cv::Mat LastTwc, Vehicle2StereoInfo* mpV2S);
 
     float dT;
     Eigen::Matrix<double,6,6> C;
@@ -58,6 +68,9 @@ public:
     Eigen::Matrix3d dR;
     Eigen::Vector3d dP;
     Eigen::Vector3d avgA, avgW;
+
+    Eigen::Matrix3d RVC;
+    Eigen::Vector3d PVC;
 };
 
 

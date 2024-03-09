@@ -125,6 +125,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         float eWheelBase = fSettings["Encoder.wheelBase"];
         mpCalib = new WHEEL::Calibration(eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
 
+        cv::Mat Vehicle2StereoT;
+        fSettings["VehicleStereo.T"] >> Vehicle2StereoT;
+
+        mpVehicle2StereoInfo = new WHEEL::Vehicle2StereoInfo(Vehicle2StereoT);
+
         cout << endl << "Wheel parameters: "<< endl;
         cout << "- resolution: " << eResolution << endl;
         cout << "- leftWheelDiameter: " << eLeftWheelDiameter << endl;
@@ -325,7 +330,7 @@ void Tracking::GrabWheelEncoder(const vector<WHEEL::PulseCount> &vWheelMeas)
 
 void Tracking::OptwithWheel()
 {
-    // Optimizer::PoseOptimizationWheel(&mCurrentFrame);
+    Optimizer::PoseOptimizationWheel(&mCurrentFrame);
 }
 
 void Tracking::WheelTrack()
@@ -360,7 +365,7 @@ void Tracking::WheelTrack()
 
     if(mState == DETERIORATION){
         // mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPost(mLastFrame.mTcw));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw, mpVehicle2StereoInfo));
 
         OptwithWheel();
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
@@ -384,7 +389,7 @@ void Tracking::WheelTrack()
 bool Tracking::OnlyWheelTrack()
 {
     if(mState == DETERIORATION){
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPost(mLastFrame.mTcw));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw, mpVehicle2StereoInfo));
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
         // cout.precision(4);
@@ -474,6 +479,7 @@ void Tracking::PreintegrateWheel()
     double LeftWheelDiameter = mpCalib->eLeftWheelDiameter;
     double RightWheelDiameter = mpCalib->eRightWheelDiameter;
     double WheelBase = mpCalib->eWheelBase;
+
     for(int i=0; i<n; i++)
     {
         double left_ditance, right_distance, left_velocity, right_velocity, base_w, during_time;

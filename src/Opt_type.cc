@@ -6,12 +6,12 @@ namespace ORB_SLAM2
 {
 
 /** 
- * @brief 局部地图中imu的局部地图优化（此时已经初始化完毕不需要再优化重力方向与尺度）
+ * @brief 局部地图中wheel的局部地图优化
  * @param pInt 预积分相关内容
  */
 EdgeInertial::EdgeInertial(WHEEL::Preintegrated *pInt): mpInt(pInt), dt(pInt->dT)
 {
-    // 准备工作，把预积分类里面的值先取出来，包含信息的是两帧之间n多个imu信息预积分来的
+    // 准备工作，把预积分类里面的值先取出来，包含信息的是两帧之间n多个wheel信息预积分来的
     // 2元边
     resize(2);
 
@@ -28,6 +28,10 @@ EdgeInertial::EdgeInertial(WHEEL::Preintegrated *pInt): mpInt(pInt), dt(pInt->dT
     // asDiagonal 生成对角矩阵
     Info = es.eigenvectors()*eigs.asDiagonal()*es.eigenvectors().transpose();
     setInformation(Info);
+    // Matrix6d s;
+    // s.setIdentity();
+    // s = s.cast<double>() * 0.0006;
+    // setInformation(s);
 }
 
 
@@ -39,16 +43,25 @@ void EdgeInertial::computeError()
     const g2o::VertexSE3Expmap* VP1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);           //位姿Ti
     const g2o::VertexSE3Expmap* VP2 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);           //位姿Tj
 
-    const Eigen::Matrix3d dR = mpInt->dR;
-    const Eigen::Vector3d dP = mpInt->dP;
+    const Eigen::Matrix3d dR = mpInt->dR.cast<double>();
+    const Eigen::Vector3d dP = mpInt->dP.cast<double>();
 
-    Eigen::Matrix3d R1 = VP1->estimate().rotation().toRotationMatrix();
-    Eigen::Matrix3d R2 = VP2->estimate().rotation().toRotationMatrix();
+    const Eigen::Matrix3d R1 = VP1->estimate().rotation().toRotationMatrix();  // Ri
+    const Eigen::Matrix3d R2 = VP2->estimate().rotation().toRotationMatrix();  // Rj
+    const Eigen::Vector3d P1 = VP1->estimate().translation();  // Pi
+    const Eigen::Vector3d P2 = VP2->estimate().translation();  // Pj
 
-    const Eigen::Vector3d er = LogSO3(dR.transpose() * R1.transpose() * R2);
-    const Eigen::Vector3d ep = R1.transpose()*(VP2->estimate().translation() - VP1->estimate().translation()) - dP;
+    const Eigen::Vector3d eRR = LogSO3(dR.transpose() * R1.transpose() * R2);
+    const Eigen::Vector3d eP = R1.transpose()*(P2 - P1) - dP;
+    double ePsquaredSum = eP.squaredNorm();
+    double eRRsquaredSum = eRR.squaredNorm();
+    Eigen::Matrix3d jacobianOplusPose = R1.transpose()*R2;
+    std::cout<<"eRR:"<<eRRsquaredSum<<", "<<"eP:" << ePsquaredSum << std::endl;
+    if(ePsquaredSum>10000 || ePsquaredSum == 0x8000000000000){
+        std::cout<<"tag"<<std::endl;
+    }
 
-    _error << er, ep;
+    _error << eRR, eP;
 }
 
 
@@ -64,17 +77,23 @@ void EdgeInertial::linearizeOplus()
     const Eigen::Vector3d P1 = VP1->estimate().translation();  // Pi
     const Eigen::Vector3d P2 = VP2->estimate().translation();  // Pj
 
-    const Eigen::Matrix3d dR = mpInt->dR;
+    const Eigen::Matrix3d dR = mpInt->dR.cast<double>();
     const Eigen::Matrix3d eR = dR.transpose() * R1.transpose() * R2;        // r△Rij
     const Eigen::Vector3d er = LogSO3(eR);                      // r△φij
     const Eigen::Matrix3d invJr = InverseRightJacobianSO3(er);  // Jr^-1(log(△Rij))
 
     // _jacobianOplus个数等于边的个数，里面的大小等于观测值维度（也就是残差）× 每个节点待优化值的维度
     // Jacobians wrt Pose 1
-    // _jacobianOplus[0] 9*6矩阵 总体来说就是三个残差分别对pose1的旋转与平移（p）求导
+    // _jacobianOplus[0] 6*6矩阵 总体来说就是2个残差分别对pose1的旋转与平移（p）求导
     _jacobianOplus[0].setZero();
     // rotation
     // (0,0)起点的3*3块表示旋转残差对pose1的旋转求导
+    Eigen::Matrix3d j11 = -invJr*R2.transpose()*R1;
+    Eigen::Matrix3d j12 = -Shat(R1.transpose()*(P2 - P1));
+
+    Eigen::Matrix3d j21 = -invJr;
+    Eigen::Matrix3d j22 = -R1.transpose()*R2;
+
     _jacobianOplus[0].block<3,3>(0,0) = -invJr*R2.transpose()*R1; // OK
     // (3,0)起点的3*3块表示位置残差对pose1的旋转求导
     _jacobianOplus[0].block<3,3>(3,0) = Shat(R1.transpose()*(P2 - P1)); // OK
@@ -85,9 +104,9 @@ void EdgeInertial::linearizeOplus()
 
     // Jacobians wrt Pose 2
     // _jacobianOplus[1] 6*6矩阵 总体来说就是三个残差分别对pose2的旋转与平移（p）求导
-    _jacobianOplus[1].setZero();
+     _jacobianOplus[1].setZero();
     // (0,0)起点的3*3块表示旋转残差对pose2的旋转求导
-    _jacobianOplus[1].block<3,3>(0,0) = -invJr; // OK
+    _jacobianOplus[1].block<3,3>(0,0) = invJr; // OK
     // (3,0)起点的3*3块表示位置残差对pose2的旋转求导
     // translation
     // (0,3)起点的3*3块表示旋转残差对pose2的位置求导

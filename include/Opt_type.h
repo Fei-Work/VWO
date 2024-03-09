@@ -31,33 +31,6 @@ public:
     void computeError();
     virtual void linearizeOplus();
 
-    // // 关于pose1与2 的旋转平移速度，以及之间的偏置的信息矩阵
-    // Eigen::Matrix<double, 24, 24> GetHessian()
-    // {
-    //     linearizeOplus();
-    //     Eigen::Matrix<double, 9, 24> J;
-    //     J.block<9, 6>(0, 0) = _jacobianOplus[0];
-    //     J.block<9, 3>(0, 6) = _jacobianOplus[1];
-    //     J.block<9, 3>(0, 9) = _jacobianOplus[2];
-    //     J.block<9, 3>(0, 12) = _jacobianOplus[3];
-    //     J.block<9, 6>(0, 15) = _jacobianOplus[4];
-    //     J.block<9, 3>(0, 21) = _jacobianOplus[5];
-    //     return J.transpose() * information() * J;
-    // }
-
-    // // 没用
-    // Eigen::Matrix<double, 18, 18> GetHessianNoPose1()
-    // {
-    //     linearizeOplus();
-    //     Eigen::Matrix<double, 9, 18> J;
-    //     J.block<9, 3>(0, 0) = _jacobianOplus[1];
-    //     J.block<9, 3>(0, 3) = _jacobianOplus[2];
-    //     J.block<9, 3>(0, 6) = _jacobianOplus[3];
-    //     J.block<9, 6>(0, 9) = _jacobianOplus[4];
-    //     J.block<9, 3>(0, 15) = _jacobianOplus[5];
-    //     return J.transpose() * information() * J;
-    // }
-
     // 关于pose2 的旋转平移信息矩阵
     Eigen::Matrix<double, 6, 6> GetHessian2()
     {

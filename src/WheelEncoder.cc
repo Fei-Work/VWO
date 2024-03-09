@@ -40,6 +40,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
     // avgW = (dT * avgW + accW * dt) / (dT + dt);
     Eigen::Matrix3d rightJ;
 
+    // Eigen::Vector3d axis(0, 0, 1.0);
     Eigen::Vector3d axis(0, 1.0, 0);
     Eigen::AngleAxis rotation(-base_w * dt, axis);
     Eigen::Matrix3d RotationMatrix = rotation.toRotationMatrix();
@@ -78,7 +79,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
     dT += dt;
 }
 
-cv::Mat Preintegrated::GetRecentPost(const cv::Mat LastTwc)
+cv::Mat Preintegrated::GetRecentPose(const cv::Mat LastTwc, Vehicle2StereoInfo* mpV2S)
 {
     Eigen::Matrix<double,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3));
     Eigen::Matrix<double,3,1> Lastt = Converter::toVector3d(LastTwc.rowRange(0,3).col(3));
@@ -186,6 +187,23 @@ Calibration::Calibration(float _eResolution, float _eLeftWheelDiameter, float _e
     eRightWheelDiameter(_eRightWheelDiameter), eWheelBase(_eWheelBase)
 {}
 
+Vehicle2StereoInfo::Vehicle2StereoInfo(cv::Mat T)
+{
+    P = T.clone();
+    cv::Mat r1, t1;
+    r1 = P.colRange(0,3).rowRange(0,3);
+    t1 = P.col(3);
+
+    R << r1.at<double>(0,0), r1.at<double>(0,1), r1.at<double>(0,2),
+         r1.at<double>(1,0), r1.at<double>(1,1), r1.at<double>(1,2),
+         r1.at<double>(2,0), r1.at<double>(2,1), r1.at<double>(2,2);
+
+    t << t1.at<double>(0), t1.at<double>(1), t1.at<double>(2);
+}
+
+cv::Mat Vehicle2StereoInfo::GetVehicle2StereoP(){ return P;}
+Eigen::Matrix3d Vehicle2StereoInfo::GetVehicle2StereoR(){return R;}
+Eigen::Vector3d Vehicle2StereoInfo::GetVehicle2Stereot(){return t;}
 
 
 Eigen::Matrix3d RightJacobianSO3(const Eigen::Vector3d &v)

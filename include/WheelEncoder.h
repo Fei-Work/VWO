@@ -5,7 +5,7 @@
 #include<opencv2/core/core.hpp>
 #include<cmath>
 #include<vector>
-// #include<sophus/se3.hpp>
+#include<sophus/se3.hpp>
 
 #include<Converter.h>
 
@@ -21,25 +21,24 @@ Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z)
 // Calibration Data
 class Calibration{
 public:
-    Calibration(float _eResolution, float _eLeftWheelDiameter, float _eRightWheelDiameter, float _eWheelBase);
+    Calibration(const Sophus::SE3d &Tbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
+    {
+        Set(Tbc,_eResolution,_eLeftWheelDiameter, _eRightWheelDiameter, _eWheelBase);
+    }
+
+    Calibration(const Calibration &calib);
+
+    //void Set(const cv::Mat &cvTbc, const float &ng, const float &na, const float &ngw, const float &naw);
+    void Set(const Sophus::SE3d &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase);
+
 
     float eResolution;
     float eLeftWheelDiameter;
     float eRightWheelDiameter;
     float eWheelBase;
-};
 
-class Vehicle2StereoInfo{
-public:
-    Vehicle2StereoInfo(cv::Mat T);
-    cv::Mat GetVehicle2StereoP();
-    Eigen::Matrix3d GetVehicle2StereoR();
-    Eigen::Vector3d GetVehicle2Stereot();
-
-private:
-    cv::Mat P;
-    Eigen::Matrix3d  R;
-    Eigen::Vector3d  t;
+    Sophus::SE3d mTcb;
+    Sophus::SE3d mTbc;
 };
 
 // WheelEncoder measure 
@@ -57,7 +56,7 @@ class Preintegrated{
 public:
     Preintegrated();
     void IntegrateNewMeasurement(const Eigen::Vector3d &velocity, const double &base_w, const float &dt);
-    cv::Mat GetRecentPose(const cv::Mat LastTwc, Vehicle2StereoInfo* mpV2S);
+    cv::Mat GetRecentPose(const cv::Mat LastTwc);
 
     float dT;
     Eigen::Matrix<double,6,6> C;

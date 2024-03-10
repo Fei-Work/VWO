@@ -123,12 +123,12 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         float eLeftWheelDiameter = fSettings["Encoder.leftWheelDiameter"];
         float eRightWheelDiameter = fSettings["Encoder.rightWheelDiameter"];
         float eWheelBase = fSettings["Encoder.wheelBase"];
-        mpCalib = new WHEEL::Calibration(eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
 
         cv::Mat Vehicle2StereoT;
         fSettings["VehicleStereo.T"] >> Vehicle2StereoT;
 
-        mpVehicle2StereoInfo = new WHEEL::Vehicle2StereoInfo(Vehicle2StereoT);
+        mpCalib = new WHEEL::Calibration(Converter::toSophus(Vehicle2StereoT), eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
+
 
         cout << endl << "Wheel parameters: "<< endl;
         cout << "- resolution: " << eResolution << endl;
@@ -249,8 +249,8 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
     }
 
     // Track();
-    TrackWithWheel();
-    // WheelTrack();
+    // TrackWithWheel();
+    WheelTrack();
 
     return mCurrentFrame.mTcw.clone();
 }
@@ -365,9 +365,9 @@ void Tracking::WheelTrack()
 
     if(mState == DETERIORATION){
         // mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw, mpVehicle2StereoInfo));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
 
-        OptwithWheel();
+        // OptwithWheel();
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
         if(WheelNeedNewKeyFrame()){
             CreateNewKeyFrame();
@@ -389,7 +389,7 @@ void Tracking::WheelTrack()
 bool Tracking::OnlyWheelTrack()
 {
     if(mState == DETERIORATION){
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw, mpVehicle2StereoInfo));
+        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
         // cout.precision(4);

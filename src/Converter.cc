@@ -148,4 +148,14 @@ std::vector<float> Converter::toQuaternion(const cv::Mat &M)
     return v;
 }
 
+Sophus::SE3d Converter::toSophus(const cv::Mat &T) {
+    Eigen::Matrix<double,3,3> eigMat = toMatrix3d(T.rowRange(0,3).colRange(0,3));
+    Eigen::Quaternionf q(eigMat.cast<float>());
+
+    Eigen::Matrix<double,3,1> t = toVector3d(T.rowRange(0,3).col(3)).cast<double>();
+
+    return Sophus::SE3d(q,t);
+}
+
+
 } //namespace ORB_SLAM

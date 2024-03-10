@@ -216,7 +216,6 @@ protected:
     cv::Mat mDistCoef;
     float mbf;
     WHEEL::Calibration* mpCalib;
-    WHEEL::Vehicle2StereoInfo* mpVehicle2StereoInfo;
 
     //New KeyFrame rules (according to fps)
     int mMinFrames;

@@ -69,7 +69,7 @@ public:
      * @param[in] thDepth           远点和近点的深度区分阈值
      * @param[in] pPrevF            上一帧的Frame
      */
-    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame*pPrevF);
+    Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth, Frame*pPrevF, const WHEEL::Calibration &WheelCalib = WHEEL::Calibration());
 
 
     // Constructor for RGB-D cameras.
@@ -86,6 +86,13 @@ public:
 
     // Set the camera pose.
     void SetPose(cv::Mat Tcw);
+
+    Eigen::Matrix<float,3,1> GetWheelPosition() const;
+    Eigen::Matrix<float,3,3> GetWheelRotation();
+    Sophus::SE3<float> GetWheelPose();
+
+    // Set the wheel pose
+    void SetWheelPose(const Eigen::Matrix3f &Rwb, const Eigen::Vector3f &twb);
 
     // Computes rotation, translation and camera center matrices from the camera pose.
     void UpdatePoseMatrices();
@@ -187,6 +194,7 @@ public:
 
     // Camera pose.
     cv::Mat mTcw;
+    Sophus::SE3<float> mSophusTcw;
 
     // Wheel preintegration from last keyframe
     KeyFrame* mpLastKeyFrame;
@@ -195,6 +203,8 @@ public:
     // Pointer to previous frame
     Frame* mpPrevFrame;
     WHEEL::Preintegrated* mpWheelPreintegratedFrame;
+
+    WHEEL::Calibration mWheelCalib;
 
     // Current and Next Frame id.
     static long unsigned int nNextId;
@@ -242,6 +252,11 @@ private:
     cv::Mat mtcw;
     cv::Mat mRwc;
     cv::Mat mOw; //==mtwc
+
+    Eigen::Matrix<float, 3, 3> mSophusRcw;
+    Eigen::Matrix<float, 3, 1> mSophustcw;
+    Eigen::Matrix<float, 3, 3> mSophusRwc;
+    Eigen::Matrix<float, 3, 1> mSophustwc; //==mtwc
 };
 
 }// namespace ORB_SLAM

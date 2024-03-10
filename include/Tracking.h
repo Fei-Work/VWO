@@ -143,6 +143,7 @@ protected:
     void TrackWithWheel();
 
     void PreintegrateWheel();
+    bool PredictStateWheel();
 
     // Map initialization for stereo and RGB-D
     void StereoInitialization();

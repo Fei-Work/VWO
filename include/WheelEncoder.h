@@ -5,7 +5,6 @@
 #include<opencv2/core/core.hpp>
 #include<cmath>
 #include<vector>
-#include<sophus/se3.hpp>
 
 #include<Converter.h>
 
@@ -14,14 +13,15 @@ namespace ORB_SLAM2{
 
 namespace WHEEL{
 
-Eigen::Matrix3d RightJacobianSO3(const Eigen::Vector3d &v);
-Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z);
+Eigen::Matrix3f RightJacobianSO3(const Eigen::Vector3f &v);
+Eigen::Matrix3f RightJacobianSO3(const float x, const float y, const float z);
 
     
 // Calibration Data
 class Calibration{
 public:
-    Calibration(const Sophus::SE3d &Tbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
+    Calibration(){}
+    Calibration(const Sophus::SE3f &Tbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
     {
         Set(Tbc,_eResolution,_eLeftWheelDiameter, _eRightWheelDiameter, _eWheelBase);
     }
@@ -29,7 +29,7 @@ public:
     Calibration(const Calibration &calib);
 
     //void Set(const cv::Mat &cvTbc, const float &ng, const float &na, const float &ngw, const float &naw);
-    void Set(const Sophus::SE3d &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase);
+    void Set(const Sophus::SE3<float> &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase);
 
 
     float eResolution;
@@ -37,8 +37,8 @@ public:
     float eRightWheelDiameter;
     float eWheelBase;
 
-    Sophus::SE3d mTcb;
-    Sophus::SE3d mTbc;
+    Sophus::SE3<float> mTcb;
+    Sophus::SE3<float> mTbc;
 };
 
 // WheelEncoder measure 
@@ -55,21 +55,21 @@ public:
 class Preintegrated{
 public:
     Preintegrated();
-    void IntegrateNewMeasurement(const Eigen::Vector3d &velocity, const double &base_w, const float &dt);
+    void IntegrateNewMeasurement(const Eigen::Vector3f &velocity, const float &base_w, const float &dt);
     cv::Mat GetRecentPose(const cv::Mat LastTwc);
 
     float dT;
-    Eigen::Matrix<double,6,6> C;
-    Eigen::Matrix<double,6,6> Info;
-    Eigen::DiagonalMatrix<double,6> Nga, NgaWalk;
+    Eigen::Matrix<float,6,6> C;
+    Eigen::Matrix<float,6,6> Info;
+    Eigen::DiagonalMatrix<float,6> Nga, NgaWalk;
 
     // Values
-    Eigen::Matrix3d dR;
-    Eigen::Vector3d dP;
-    Eigen::Vector3d avgA, avgW;
+    Eigen::Matrix3f dR;
+    Eigen::Vector3f dP;
+    Eigen::Vector3f avgA, avgW;
 
-    Eigen::Matrix3d RVC;
-    Eigen::Vector3d PVC;
+    Eigen::Matrix3f RVC;
+    Eigen::Vector3f PVC;
 };
 
 

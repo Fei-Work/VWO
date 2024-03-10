@@ -24,31 +24,31 @@ Preintegrated::Preintegrated()
     Nga = Nga * 0.006;
 }
 
-void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, const double &base_w, const float &dt)
+void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &velocity, const float &base_w, const float &dt)
 {
     // Matrices to compute covariance
     // Step 1.构造协方差矩阵
     // 噪声矩阵的传递矩阵，这部分用于计算i到j-1历史噪声或者协方差
-    Eigen::Matrix<double, 6, 6> A;
+    Eigen::Matrix<float, 6, 6> A;
     A.setIdentity();
     // 噪声矩阵的传递矩阵，这部分用于计算j-1新的噪声或协方差，这两个矩阵里面的数都是当前时刻的，计算主要是为了下一时刻使用
-    Eigen::Matrix<double, 6, 6> B;
+    Eigen::Matrix<float, 6, 6> B;
     B.setZero();
 
     // 记录平均加速度和角速度
     // avgA = (dT * avgA + dR * acc * dt) / (dT + dt);
     // avgW = (dT * avgW + accW * dt) / (dT + dt);
-    Eigen::Matrix3d rightJ;
+    Eigen::Matrix3f rightJ;
 
     // Eigen::Vector3d axis(0, 0, 1.0);
-    Eigen::Vector3d axis(0, 1.0, 0);
-    Eigen::AngleAxis rotation(-base_w * dt, axis);
-    Eigen::Matrix3d RotationMatrix = rotation.toRotationMatrix();
+    Eigen::Vector3f axis(0, 1.0, 0);
+    Eigen::AngleAxisf rotation(-base_w * dt, axis);
+    Eigen::Matrix3f RotationMatrix = rotation.toRotationMatrix();
     dP = dP + dR * velocity * dt;
 
     // Compute velocity and position parts of matrices A and B (rely on non-updated delta rotation)
     // 根据η_ij = A * η_i,j-1 + B_j-1 * η_j-1中的Ａ矩阵和Ｂ矩阵对速度和位移进行更新
-    Eigen::Matrix3d Wv;
+    Eigen::Matrix3f Wv;
     Wv.setZero();
     Wv(0,1) = -velocity(2);
     Wv(0,2) = velocity(1);
@@ -64,7 +64,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
 
     // Compute rotation parts of matrices A and B
     // 补充AB矩阵
-    Eigen::Vector3d rotationVector = rotation.axis() * rotation.angle();
+    Eigen::Vector3f rotationVector = rotation.axis() * rotation.angle();
 
     rightJ = RightJacobianSO3(rotationVector);
     A.block<3, 3>(0, 0) = RotationMatrix.transpose();
@@ -81,15 +81,15 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3d &velocity, con
 
 cv::Mat Preintegrated::GetRecentPose(const cv::Mat LastTwc)
 {
-    Eigen::Matrix<double,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3));
-    Eigen::Matrix<double,3,1> Lastt = Converter::toVector3d(LastTwc.rowRange(0,3).col(3));
+    Eigen::Matrix<float,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3)).cast<float>();
+    Eigen::Matrix<float,3,1> Lastt = Converter::toVector3d(LastTwc.rowRange(0,3).col(3)).cast<float>();
     
     // 通过读取 WheelBaseTransR 与 WheelBaseTransP （预积分值）得到新的位姿数据
-    Eigen::Matrix<double,3,3> NewPoseR = dR * LastR;
-    Eigen::Matrix<double,3,1> NewPoset = dR * Lastt + dP;
+    Eigen::Matrix<float,3,3> NewPoseR = dR * LastR;
+    Eigen::Matrix<float,3,1> NewPoset = dR * Lastt + dP;
 
     // 转化为opencv格式的T
-    cv::Mat cvMat = Converter::toCvSE3(NewPoseR, NewPoset);
+    cv::Mat cvMat = Converter::toCvSE3(NewPoseR.cast<double>(), NewPoset.cast<double>());
 
     return cvMat.clone();
 }
@@ -192,7 +192,7 @@ Calibration::Calibration(const Calibration &Calib)
     mTcb = Calib.mTcb;
 }
 
-void Calibration::Set(const Sophus::SE3d &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
+void Calibration::Set(const Sophus::SE3f &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
 {
     eResolution = _eResolution;
     eLeftWheelDiameter = _eLeftWheelDiameter;
@@ -204,22 +204,22 @@ void Calibration::Set(const Sophus::SE3d &sophTbc, const float &_eResolution, co
 }
 
 
-Eigen::Matrix3d RightJacobianSO3(const Eigen::Vector3d &v)
+Eigen::Matrix3f RightJacobianSO3(const Eigen::Vector3f &v)
 {
     return RightJacobianSO3(v[0],v[1],v[2]);
 }
 
-Eigen::Matrix3d RightJacobianSO3(const double x, const double y, const double z)
+Eigen::Matrix3f RightJacobianSO3(const float x, const float y, const float z)
 {
-    const double d2 = x*x+y*y+z*z;
-    const double d = sqrt(d2);
+    const float d2 = x*x+y*y+z*z;
+    const float d = sqrt(d2);
 
-    Eigen::Matrix3d W;
+    Eigen::Matrix3f W;
     W << 0.0, -z, y,z, 0.0, -x,-y,  x, 0.0;
     if(d<1e-5)
-        return Eigen::Matrix3d::Identity();
+        return Eigen::Matrix3f::Identity();
     else
-        return Eigen::Matrix3d::Identity()*sin(d)/(d) + (1-sin(d)/d)*(W*W+Eigen::Matrix3d::Identity()) + (1-cos(d))/d * W;
+        return Eigen::Matrix3f::Identity()*sin(d)/(d) + (1-sin(d)/d)*(W*W+Eigen::Matrix3f::Identity()) + (1-cos(d))/d * W;
 }
 
 }

@@ -124,10 +124,11 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         float eRightWheelDiameter = fSettings["Encoder.rightWheelDiameter"];
         float eWheelBase = fSettings["Encoder.wheelBase"];
 
-        cv::Mat Vehicle2StereoT;
-        fSettings["VehicleStereo.T"] >> Vehicle2StereoT;
+        cv::Mat VehicleStereoT;
+        fSettings["Tvc"] >> VehicleStereoT;
+        Sophus::SE3<float> Tbc = Converter::toSophus(VehicleStereoT);
 
-        mpCalib = new WHEEL::Calibration(Converter::toSophus(Vehicle2StereoT), eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
+        mpCalib = new WHEEL::Calibration(Tbc, eResolution, eLeftWheelDiameter, eRightWheelDiameter, eWheelBase);
 
 
         cout << endl << "Wheel parameters: "<< endl;
@@ -365,7 +366,8 @@ void Tracking::WheelTrack()
 
     if(mState == DETERIORATION){
         // mCurrentFrame.SetPose(WEDpt->GetNewPose(mLastFrame.mTcw));
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
+        PredictStateWheel();
+        // mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
 
         // OptwithWheel();
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);
@@ -485,8 +487,8 @@ void Tracking::PreintegrateWheel()
         double left_ditance, right_distance, left_velocity, right_velocity, base_w, during_time;
         double pi = M_PI;
         float tstep;
-        Eigen::Vector3d vel, angVel;
-        Eigen::Matrix3d MatrixR;
+        Eigen::Vector3f vel, angVel;
+        Eigen::Matrix3f MatrixR;
 
         // 预处理
         vel.setZero();
@@ -539,6 +541,31 @@ void Tracking::PreintegrateWheel()
 
     mCurrentFrame.setIntegrated();
 }
+
+bool Tracking::PredictStateWheel()
+{
+    if(!mCurrentFrame.mpPrevFrame)
+    {
+        cout<<("No last frame");
+        return false;
+    }
+    const Eigen::Vector3f twb1 = mLastFrame.GetWheelPosition();
+    const Eigen::Matrix3f Rwb1 = mLastFrame.GetWheelRotation();
+
+    const float t12 = mCurrentFrame.mpWheelPreintegratedFrame->dT;
+
+    // 计算当前帧在世界坐标系的位姿,原理都是用预积分的位姿（预积分的值不会变化）与上一帧的位姿（会迭代变化）进行更新 
+    // 旋转 R_wb2 = R_wb1 * R_b1b2
+    Eigen::Matrix3f Rwb2 = Rwb1 * mCurrentFrame.mpWheelPreintegratedFrame->dR;
+    // 位移
+    Eigen::Vector3f twb2 = twb1 + Rwb1*mCurrentFrame.mpWheelPreintegratedFrame->dP;
+
+    // 设置当前帧的世界坐标系的相机位姿
+    mCurrentFrame.SetWheelPose(Rwb2,twb2);
+
+    return true;
+}
+
 /*
  * @brief tracking function. 依赖轮式里程计以及视觉
  *

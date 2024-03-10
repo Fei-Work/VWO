@@ -52,7 +52,7 @@ public:
 
     static std::vector<float> toQuaternion(const cv::Mat &M);
 
-    static Sophus::SE3d toSophus(const cv::Mat &T);
+    static Sophus::SE3<float> toSophus(const cv::Mat &T);
 
 };
 

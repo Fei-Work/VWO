@@ -148,13 +148,17 @@ std::vector<float> Converter::toQuaternion(const cv::Mat &M)
     return v;
 }
 
-Sophus::SE3d Converter::toSophus(const cv::Mat &T) {
-    Eigen::Matrix<double,3,3> eigMat = toMatrix3d(T.rowRange(0,3).colRange(0,3));
-    Eigen::Quaternionf q(eigMat.cast<float>());
+Sophus::SE3<float> Converter::toSophus(const cv::Mat &T) {
+    Eigen::Matrix<float,3,3> M;
 
-    Eigen::Matrix<double,3,1> t = toVector3d(T.rowRange(0,3).col(3)).cast<double>();
+    M << T.at<float>(0,0), T.at<float>(0,1), T.at<float>(0,2),
+         T.at<float>(1,0), T.at<float>(1,1), T.at<float>(1,2),
+         T.at<float>(2,0), T.at<float>(2,1), T.at<float>(2,2);
 
-    return Sophus::SE3d(q,t);
+
+    Eigen::Matrix<float,3,1> t = toVector3d(T.rowRange(0,3).col(3)).cast<float>();
+
+    return Sophus::SE3<float>(M,t);
 }
 
 

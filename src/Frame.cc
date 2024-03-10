@@ -61,9 +61,9 @@ Frame::Frame(const Frame &frame)
 }
 
 // 双目
-Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,  Frame* pPrevF)
+Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const double &timeStamp, ORBextractor* extractorLeft, ORBextractor* extractorRight, ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth,  Frame* pPrevF, const WHEEL::Calibration &WheelCalib)
     :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
-     mpReferenceKF(static_cast<KeyFrame*>(NULL)),mpWheelPreintegrated(NULL), mpPrevFrame(pPrevF), mpWheelPreintegratedFrame(NULL), mbWheelPreintegrated(false)
+     mpReferenceKF(static_cast<KeyFrame*>(NULL)),mpWheelPreintegrated(NULL), mpPrevFrame(pPrevF), mpWheelPreintegratedFrame(NULL), mbWheelPreintegrated(false), mWheelCalib(WheelCalib)
 {
     // Frame ID
     mnId=nNextId++;
@@ -264,6 +264,7 @@ void Frame::ExtractORB(int flag, const cv::Mat &im)
 void Frame::SetPose(cv::Mat Tcw)
 {
     mTcw = Tcw.clone();
+    mSophusTcw = Converter::toSophus(mTcw);
     UpdatePoseMatrices();
 }
 
@@ -278,7 +279,40 @@ void Frame::UpdatePoseMatrices()
     mRwc = mRcw.t();
     mtcw = mTcw.rowRange(0,3).col(3);
     mOw = -mRcw.t()*mtcw;
+
+    Sophus::SE3<float>  mSophusTwc = mSophusTcw.inverse();
+    mSophusRwc = mSophusTwc.rotationMatrix();
+    mSophustwc = mSophusTwc.translation();
+    mSophusRcw = mSophusTcw.rotationMatrix();
+    mSophustcw = mSophusTcw.translation();
 }
+
+Eigen::Matrix<float,3,1> Frame::GetWheelPosition() const{
+    return mSophusRwc * mWheelCalib.mTcb.translation() + mSophustwc;
+}
+Eigen::Matrix<float,3,3> Frame::GetWheelRotation(){
+    return mSophusRwc * mWheelCalib.mTcb.rotationMatrix();
+}
+Sophus::SE3<float> Frame::GetWheelPose(){
+    return mSophusTcw.inverse() * mWheelCalib.mTcb;
+}
+
+    // Set the wheel pose
+void Frame::SetWheelPose(const Eigen::Matrix3f &Rwb, const Eigen::Vector3f &twb)
+{
+
+    Sophus::SE3f Twb(Rwb, twb);
+    Sophus::SE3f Tbw = Twb.inverse();
+
+    mSophusTcw = mWheelCalib.mTcb * Tbw;
+    mTcw = Converter::toCvSE3(mSophusTcw.rotationMatrix().cast<double>(), mSophusTcw.translation().cast<double>());
+
+    UpdatePoseMatrices();
+}
+
+
+
+
 
 bool Frame::isInFrustum(MapPoint *pMP, float viewingCosLimit)
 {

@@ -43,6 +43,9 @@ public:
 
     WHEEL::Preintegrated *mpInt;  // 预积分
     const double dt;  // 预积分时间
+
+    Sophus::SE3<float> Tcb;
+    Sophus::SE3<float> Tbc;
 };
 
 

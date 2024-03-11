@@ -11,7 +11,7 @@ PulseCount::PulseCount(double _time, double _WheelLeft, double _WheelRight):
     WheelLeft(_WheelLeft), WheelRight(_WheelRight)
 {}
 
-Preintegrated::Preintegrated()
+Preintegrated::Preintegrated(const Calibration _mCalib)
 {
     dP.setZero();
     dR.setIdentity();
@@ -20,8 +20,9 @@ Preintegrated::Preintegrated()
     avgA.setZero();  // 平均加速度
     avgW.setZero();  // 平均角速度
     dT = 0;
-    Nga.setIdentity();
-    Nga = Nga * 0.006;
+    Nga = _mCalib.Cov;
+
+    mCalib = _mCalib;
 }
 
 void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &velocity, const float &base_w, const float &dt)
@@ -41,7 +42,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &velocity, con
     Eigen::Matrix3f rightJ;
 
     // Eigen::Vector3d axis(0, 0, 1.0);
-    Eigen::Vector3f axis(0, 1.0, 0);
+    Eigen::Vector3f axis(0, 0, 1.0);
     Eigen::AngleAxisf rotation(-base_w * dt, axis);
     Eigen::Matrix3f RotationMatrix = rotation.toRotationMatrix();
     dP = dP + dR * velocity * dt;
@@ -79,6 +80,7 @@ void Preintegrated::IntegrateNewMeasurement(const Eigen::Vector3f &velocity, con
     dT += dt;
 }
 
+// No use now.
 cv::Mat Preintegrated::GetRecentPose(const cv::Mat LastTwc)
 {
     Eigen::Matrix<float,3,3> LastR = Converter::toMatrix3d(LastTwc.rowRange(0,3).colRange(0,3)).cast<float>();
@@ -190,6 +192,8 @@ Calibration::Calibration(const Calibration &Calib)
 
     mTbc = Calib.mTbc;
     mTcb = Calib.mTcb;
+
+    Cov = Calib.Cov;
 }
 
 void Calibration::Set(const Sophus::SE3f &sophTbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
@@ -201,6 +205,9 @@ void Calibration::Set(const Sophus::SE3f &sophTbc, const float &_eResolution, co
 
     mTbc = sophTbc;
     mTcb = mTbc.inverse();
+
+    // 噪声协方差
+    Cov.diagonal() << 0.001, 0.001, 0.001, 0.006, 0.006, 100;
 }
 
 

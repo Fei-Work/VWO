@@ -127,6 +127,19 @@ Encoder.rightWheelDiameter: 0.622806
 Encoder.wheelBase: 1.52439
 
 #--------------------------------------------------------------------------------------------
+# Camara to Encoder
+#--------------------------------------------------------------------------------------------
+
+Tvc:  !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [-6.80499e-03, -1.53215e-02, 9.9985e-01, 1.64239e+00,
+          -9.99977e-01, 3.34627e-04, -6.80066e-03, 2.47401e-01, 
+          -2.30383e-04, -9.99883e-01, -1.53234e-02, 1.58411e+00,
+          0.,0.,0.,1]
+
+#--------------------------------------------------------------------------------------------
 # ORB Parameters
 #--------------------------------------------------------------------------------------------
 
@@ -143,8 +156,8 @@ ORBextractor.nLevels: 8
 # Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
 # Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
 # You can lower these values if your images have low contrast（对比度）			
-ORBextractor.iniThFAST: 24
-ORBextractor.minThFAST: 12
+ORBextractor.iniThFAST: 20
+ORBextractor.minThFAST: 10
 # ORBextractor.iniThFAST: 16
 # ORBextractor.minThFAST: 5
 

@@ -50,7 +50,8 @@ Frame::Frame(const Frame &frame)
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
      mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2),
      mpWheelPreintegrated(frame.mpWheelPreintegrated), mpPrevFrame(frame.mpPrevFrame),
-     mpWheelPreintegratedFrame(frame.mpWheelPreintegratedFrame),mbWheelPreintegrated(frame.mbWheelPreintegrated),mpMutexWheel(frame.mpMutexWheel)
+     mpWheelPreintegratedFrame(frame.mpWheelPreintegratedFrame),mbWheelPreintegrated(frame.mbWheelPreintegrated),
+     mpMutexWheel(frame.mpMutexWheel),mWheelCalib(frame.mWheelCalib)
 {
     for(int i=0;i<FRAME_GRID_COLS;i++)
         for(int j=0; j<FRAME_GRID_ROWS; j++)
@@ -305,9 +306,7 @@ void Frame::SetWheelPose(const Eigen::Matrix3f &Rwb, const Eigen::Vector3f &twb)
     Sophus::SE3f Tbw = Twb.inverse();
 
     mSophusTcw = mWheelCalib.mTcb * Tbw;
-    mTcw = Converter::toCvSE3(mSophusTcw.rotationMatrix().cast<double>(), mSophusTcw.translation().cast<double>());
-
-    UpdatePoseMatrices();
+    SetPose(Converter::toCvSE3(mSophusTcw.rotationMatrix().cast<double>(), mSophusTcw.translation().cast<double>()));
 }
 
 

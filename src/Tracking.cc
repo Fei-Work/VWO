@@ -180,7 +180,7 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
             mDepthMapFactor = 1.0f/mDepthMapFactor;
     }
     if(sensor==System::WHEEL_STEREO)
-        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated();
+        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated(*mpCalib);
     
 }
 
@@ -237,7 +237,7 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
-            mK,mDistCoef,mbf,mThDepth,NULL);
+            mK,mDistCoef,mbf,mThDepth,NULL, *mpCalib);
     }
     else{
     // 此步骤已经完成当前帧Frame的初匹配
@@ -246,12 +246,12 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
-            mK,mDistCoef,mbf,mThDepth,&mLastFrame);
+            mK,mDistCoef,mbf,mThDepth,&mLastFrame, *mpCalib);
     }
 
     // Track();
-    // TrackWithWheel();
-    WheelTrack();
+    TrackWithWheel();
+    // WheelTrack();
 
     return mCurrentFrame.mTcw.clone();
 }
@@ -384,14 +384,16 @@ void Tracking::WheelTrack()
     if(vPulseCount.size()>0){
         time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+09);
     }
-    cout<<"Time:"<<time<<", theta:"<<acos(mCurrentFrame.mTcw.at<float>(0,0));
-    cout<<", (Tx,Ty):"<<mCurrentFrame.mTcw.at<float>(0,3)<<"  "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
+    cout<<"Time:"<<time<<",";
+    cout<<", (TcwX,TcwY,TcwZ):"<<mCurrentFrame.mTcw.at<float>(0,3)<<", "<<mCurrentFrame.mTcw.at<float>(1,3)<<", "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
+    cout<<", (TbwX,TbwY,TbwZ):"<<mCurrentFrame.GetWheelPosition()(0)<<", "<<mCurrentFrame.GetWheelPosition()(1)<<", "<<mCurrentFrame.GetWheelPosition()(2)<<endl;
 }
 
 bool Tracking::OnlyWheelTrack()
 {
     if(mState == DETERIORATION){
-        mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
+        PredictStateWheel();
+        // mCurrentFrame.SetPose(mCurrentFrame.mpWheelPreintegratedFrame->GetRecentPose(mLastFrame.mTcw));
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
         // cout.precision(4);
@@ -475,7 +477,7 @@ void Tracking::PreintegrateWheel()
         return;
     }
 
-    WHEEL::Preintegrated* pWheelPreintegratedFromLastFrame = new WHEEL::Preintegrated();
+    WHEEL::Preintegrated* pWheelPreintegratedFromLastFrame = new WHEEL::Preintegrated(*mpCalib);
 
     double Resolution = mpCalib->eResolution;
     double LeftWheelDiameter = mpCalib->eLeftWheelDiameter;
@@ -500,10 +502,8 @@ void Tracking::PreintegrateWheel()
         left_velocity = left_ditance / during_time;
         right_velocity = right_distance / during_time;
 
-        vel(2) = -(left_velocity + right_velocity)/2;
+        vel(0) = (left_velocity + right_velocity)/2;
         base_w = (left_velocity - right_velocity)/WheelBase;
-
-
 
 
         // 第一帧数据但不是最后两帧,wheel总帧数大于2
@@ -1821,7 +1821,7 @@ void Tracking::CreateNewKeyFrame()
     }
     if (mSensor == System::WHEEL_STEREO)
     {
-        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated();
+        mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated(*mpCalib);
     }
     mpLocalMapper->InsertKeyFrame(pKF);
 

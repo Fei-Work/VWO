@@ -39,6 +39,8 @@ public:
 
     Sophus::SE3<float> mTcb;
     Sophus::SE3<float> mTbc;
+
+    Eigen::DiagonalMatrix<float,6> Cov;
 };
 
 // WheelEncoder measure 
@@ -53,8 +55,7 @@ public:
 };
 
 class Preintegrated{
-public:
-    Preintegrated();
+public:    Preintegrated(const Calibration _mCalib);
     void IntegrateNewMeasurement(const Eigen::Vector3f &velocity, const float &base_w, const float &dt);
     cv::Mat GetRecentPose(const cv::Mat LastTwc);
 
@@ -70,6 +71,9 @@ public:
 
     Eigen::Matrix3f RVC;
     Eigen::Vector3f PVC;
+
+    // Trans Tcb Info
+    Calibration mCalib;
 };
 
 

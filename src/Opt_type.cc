@@ -32,6 +32,8 @@ EdgeInertial::EdgeInertial(WHEEL::Preintegrated *pInt): mpInt(pInt), dt(pInt->dT
     // s.setIdentity();
     // s = s.cast<double>() * 0.0006;
     // setInformation(s);
+    Tbc = pInt->mCalib.mTbc;
+    Tcb = pInt->mCalib.mTcb;
 }
 
 
@@ -43,23 +45,32 @@ void EdgeInertial::computeError()
     const g2o::VertexSE3Expmap* VP1 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[0]);           //位姿Ti
     const g2o::VertexSE3Expmap* VP2 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);           //位姿Tj
 
+    const Eigen::Matrix3d Rcb = Tcb.rotationMatrix().cast<double>();
+    const Eigen::Vector3d Pcb = Tcb.translation().cast<double>();
+
     const Eigen::Matrix3d dR = mpInt->dR.cast<double>();
     const Eigen::Vector3d dP = mpInt->dP.cast<double>();
 
-    const Eigen::Matrix3d R1 = VP1->estimate().rotation().toRotationMatrix();  // Ri
-    const Eigen::Matrix3d R2 = VP2->estimate().rotation().toRotationMatrix();  // Rj
-    const Eigen::Vector3d P1 = VP1->estimate().translation();  // Pi
-    const Eigen::Vector3d P2 = VP2->estimate().translation();  // Pj
+    const Eigen::Matrix3d Rcw1 = VP1->estimate().rotation().toRotationMatrix();  // Ri
+    const Eigen::Matrix3d Rcw2 = VP2->estimate().rotation().toRotationMatrix();  // Rj
+    const Eigen::Vector3d Pcw1 = VP1->estimate().translation();  // Pi
+    const Eigen::Vector3d Pcw2 = VP2->estimate().translation();  // Pj
+
+    const Eigen::Matrix3d R1 = Rcw1.transpose() * Rcb;
+    const Eigen::Matrix3d R2 = Rcw2.transpose() * Rcb;  // Rj
+    const Eigen::Vector3d P1 = Rcw1.transpose() * Pcb - Rcw1.transpose() * Pcw1;
+    const Eigen::Vector3d P2 = Rcw2.transpose() * Pcb - Rcw2.transpose() * Pcw2;  // Pj
 
     const Eigen::Vector3d eRR = LogSO3(dR.transpose() * R1.transpose() * R2);
     const Eigen::Vector3d eP = R1.transpose()*(P2 - P1) - dP;
-    double ePsquaredSum = eP.squaredNorm();
-    double eRRsquaredSum = eRR.squaredNorm();
-    Eigen::Matrix3d jacobianOplusPose = R1.transpose()*R2;
-    std::cout<<"eRR:"<<eRRsquaredSum<<", "<<"eP:" << ePsquaredSum << std::endl;
-    if(ePsquaredSum>10000 || ePsquaredSum == 0x8000000000000){
-        std::cout<<"tag"<<std::endl;
-    }
+    
+    // double ePsquaredSum = eP.squaredNorm();
+    // double eRRsquaredSum = eRR.squaredNorm();
+    // Eigen::Matrix3d jacobianOplusPose = Rcw1.transpose()*Rcw2;
+    // std::cout<<"eRR:"<<eRRsquaredSum<<", "<<"eP:" << ePsquaredSum << std::endl;
+    // if(ePsquaredSum>10000 || ePsquaredSum == 0x8000000000000){
+    //     std::cout<<"tag"<<std::endl;
+    // }
 
     _error << eRR, eP;
 }
@@ -72,12 +83,22 @@ void EdgeInertial::linearizeOplus()
     const g2o::VertexSE3Expmap* VP2 = static_cast<const g2o::VertexSE3Expmap*>(_vertices[1]);           //位姿Tj
 
 
-    const Eigen::Matrix3d R1 = VP1->estimate().rotation().toRotationMatrix();  // Ri
-    const Eigen::Matrix3d R2 = VP2->estimate().rotation().toRotationMatrix();  // Rj
-    const Eigen::Vector3d P1 = VP1->estimate().translation();  // Pi
-    const Eigen::Vector3d P2 = VP2->estimate().translation();  // Pj
+    const Eigen::Matrix3d Rcb = Tcb.rotationMatrix().cast<double>();
+    const Eigen::Vector3d Pcb = Tcb.translation().cast<double>();
 
     const Eigen::Matrix3d dR = mpInt->dR.cast<double>();
+    const Eigen::Vector3d dP = mpInt->dP.cast<double>();
+
+    const Eigen::Matrix3d Rcw1 = VP1->estimate().rotation().toRotationMatrix();  // Ri
+    const Eigen::Matrix3d Rcw2 = VP2->estimate().rotation().toRotationMatrix();  // Rj
+    const Eigen::Vector3d Pcw1 = VP1->estimate().translation();  // Pi
+    const Eigen::Vector3d Pcw2 = VP2->estimate().translation();  // Pj
+
+    const Eigen::Matrix3d R1 = Rcw1.transpose() * Rcb;
+    const Eigen::Matrix3d R2 = Rcw2.transpose() * Rcb;  // Rj
+    const Eigen::Vector3d P1 = Rcw1.transpose() * Pcb - Rcw1.transpose() * Pcw1;
+    const Eigen::Vector3d P2 = Rcw2.transpose() * Pcb - Rcw2.transpose() * Pcw2;  // Pj
+
     const Eigen::Matrix3d eR = dR.transpose() * R1.transpose() * R2;        // r△Rij
     const Eigen::Vector3d er = LogSO3(eR);                      // r△φij
     const Eigen::Matrix3d invJr = InverseRightJacobianSO3(er);  // Jr^-1(log(△Rij))

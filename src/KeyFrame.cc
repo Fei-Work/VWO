@@ -41,7 +41,7 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mvInvLevelSigma2(F.mvInvLevelSigma2), mnMinX(F.mnMinX), mnMinY(F.mnMinY), mnMaxX(F.mnMaxX),
     mnMaxY(F.mnMaxY), mK(F.mK), mvpMapPoints(F.mvpMapPoints), mpKeyFrameDB(pKFDB),
     mpORBvocabulary(F.mpORBvocabulary), mbFirstConnection(true), mpParent(NULL), mbNotErase(false),
-    mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
+    mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap),mPrevKF(NULL), mNextKF(NULL),mpWheelPreintegrated(F.mpWheelPreintegrated), mWheelCalib(F.mWheelCalib),mSophusTcw(F.mSophusTcw)
 {
     mnId=nNextId++;
 
@@ -81,6 +81,13 @@ void KeyFrame::SetPose(const cv::Mat &Tcw_)
     Ow.copyTo(Twc.rowRange(0,3).col(3));
     cv::Mat center = (cv::Mat_<float>(4,1) << mHalfBaseline, 0 , 0, 1);
     Cw = Twc*center;
+
+    mSophusTcw = Converter::toSophus(Tcw);
+    Sophus::SE3<float>  mSophusTwc = mSophusTcw.inverse();
+    mSophusRwc = mSophusTwc.rotationMatrix();
+    mSophustwc = mSophusTwc.translation();
+    mSophusRcw = mSophusTcw.rotationMatrix();
+    mSophustcw = mSophusTcw.translation();
 }
 
 cv::Mat KeyFrame::GetPose()
@@ -118,6 +125,16 @@ cv::Mat KeyFrame::GetTranslation()
 {
     unique_lock<mutex> lock(mMutexPose);
     return Tcw.rowRange(0,3).col(3).clone();
+}
+
+Eigen::Matrix<float,3,1> KeyFrame::GetWheelPosition() const{
+    return mSophusRwc * mWheelCalib.mTcb.translation() + mSophustwc;
+}
+Eigen::Matrix<float,3,3> KeyFrame::GetWheelRotation(){
+    return mSophusRwc * mWheelCalib.mTcb.rotationMatrix();
+}
+Sophus::SE3<float> KeyFrame::GetWheelPose(){
+    return mSophusTcw.inverse() * mWheelCalib.mTcb;
 }
 
 void KeyFrame::AddConnection(KeyFrame *pKF, const int &weight)

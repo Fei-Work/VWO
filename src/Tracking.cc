@@ -47,8 +47,8 @@ namespace ORB_SLAM2
 Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer, Map *pMap, KeyFrameDatabase* pKFDB, const string &strSettingPath, const int sensor):
     mState(NO_IMAGES_YET), mSensor(sensor), mbOnlyTracking(false), mbVO(false), mpORBVocabulary(pVoc),
     mpKeyFrameDB(pKFDB), mpInitializer(static_cast<Initializer*>(NULL)), mpSystem(pSys), mpViewer(NULL),
-    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0),mLastPulseCount(0,0,0), tag_dis(-1)
-
+    mpFrameDrawer(pFrameDrawer), mpMapDrawer(pMapDrawer), mpMap(pMap), mnLastRelocFrameId(0),mLastPulseCount(0,0,0), tag_dis(-1),
+    mbMapUpdated(false)
 {
     // Load camera parameters from settings file
 
@@ -528,15 +528,15 @@ void Tracking::PreintegrateWheel()
         }
         // Step 3.依次进行预积分计算
         // 应该是必存在的吧，一个是相对上一关键帧，一个是相对上一帧
-        // if (!mpWheelPreintegratedFromLastKF)
-        //     cout << "mpWheelPreintegratedFromLastKF does not exist" << endl;
-        // mpWheelPreintegratedFromLastKF->IntegrateNewMeasurement(vel,MatrixR,tstep);
+        if (!mpWheelPreintegratedFromLastKF)
+            cout << "mpWheelPreintegratedFromLastKF does not exist" << endl;
+        mpWheelPreintegratedFromLastKF->IntegrateNewMeasurement(vel,base_w,tstep);
         pWheelPreintegratedFromLastFrame->IntegrateNewMeasurement(vel,base_w,tstep);
     }
 
     // 记录当前预积分的图像帧
     mCurrentFrame.mpWheelPreintegratedFrame = pWheelPreintegratedFromLastFrame;
-    // mCurrentFrame.mpWheelPreintegrated = mpWheelPreintegratedFromLastKF;
+    mCurrentFrame.mpWheelPreintegrated = mpWheelPreintegratedFromLastKF;
     mCurrentFrame.mpLastKeyFrame = mpLastKeyFrame;
 
     mCurrentFrame.setIntegrated();
@@ -549,21 +549,46 @@ bool Tracking::PredictStateWheel()
         cout<<("No last frame");
         return false;
     }
-    const Eigen::Vector3f twb1 = mLastFrame.GetWheelPosition();
-    const Eigen::Matrix3f Rwb1 = mLastFrame.GetWheelRotation();
+    if(mbMapUpdated && mpLastKeyFrame)
+    {
+        const Eigen::Vector3f twb1 = mpLastKeyFrame->GetWheelPosition();
+        const Eigen::Matrix3f Rwb1 = mpLastKeyFrame->GetWheelRotation();
 
-    const float t12 = mCurrentFrame.mpWheelPreintegratedFrame->dT;
+        const float t12 = mpWheelPreintegratedFromLastKF->dT;
 
-    // 计算当前帧在世界坐标系的位姿,原理都是用预积分的位姿（预积分的值不会变化）与上一帧的位姿（会迭代变化）进行更新 
-    // 旋转 R_wb2 = R_wb1 * R_b1b2
-    Eigen::Matrix3f Rwb2 = Rwb1 * mCurrentFrame.mpWheelPreintegratedFrame->dR;
-    // 位移
-    Eigen::Vector3f twb2 = twb1 + Rwb1*mCurrentFrame.mpWheelPreintegratedFrame->dP;
+        // 计算当前帧在世界坐标系的位姿,原理都是用预积分的位姿（预积分的值不会变化）与上一帧的位姿（会迭代变化）进行更新 
+        // 旋转 R_wb2 = R_wb1 * R_b1b2
+        Eigen::Matrix3f Rwb2 = Rwb1 * mpWheelPreintegratedFromLastKF->dR;
+        // 位移
+        Eigen::Vector3f twb2 = twb1 + Rwb1*mpWheelPreintegratedFromLastKF->dP;
 
-    // 设置当前帧的世界坐标系的相机位姿
-    mCurrentFrame.SetWheelPose(Rwb2,twb2);
+        // 设置当前帧的世界坐标系的相机位姿
+        mCurrentFrame.SetWheelPose(Rwb2,twb2);
 
-    return true;
+        return true;
+    }
+    else if(!mbMapUpdated)
+    {
+        const Eigen::Vector3f twb1 = mLastFrame.GetWheelPosition();
+        const Eigen::Matrix3f Rwb1 = mLastFrame.GetWheelRotation();
+
+        const float t12 = mCurrentFrame.mpWheelPreintegratedFrame->dT;
+
+        // 计算当前帧在世界坐标系的位姿,原理都是用预积分的位姿（预积分的值不会变化）与上一帧的位姿（会迭代变化）进行更新 
+        // 旋转 R_wb2 = R_wb1 * R_b1b2
+        Eigen::Matrix3f Rwb2 = Rwb1 * mCurrentFrame.mpWheelPreintegratedFrame->dR;
+        // 位移
+        Eigen::Vector3f twb2 = twb1 + Rwb1*mCurrentFrame.mpWheelPreintegratedFrame->dP;
+
+        // 设置当前帧的世界坐标系的相机位姿
+        mCurrentFrame.SetWheelPose(Rwb2,twb2);
+
+        return true;
+    }
+    else
+        cout << "not IMU prediction!!" << endl;
+
+    return false;
 }
 
 /*
@@ -812,6 +837,7 @@ void Tracking::Track()
     // 疑问:这样子会不会影响地图的实时更新?
     // 回答：主要耗时在构造帧中特征点的提取和匹配部分,在那个时候地图是没有被上锁的,有足够的时间更新地图
     unique_lock<mutex> lock(mpMap->mMutexMapUpdate);
+    mbMapUpdated = false;
 
     // Step 1：地图初始化
     if(mState==NOT_INITIALIZED)
@@ -1757,6 +1783,12 @@ void Tracking::CreateNewKeyFrame()
     mpReferenceKF = pKF;
     mCurrentFrame.mpReferenceKF = pKF;
 
+    if(mpLastKeyFrame)
+    {
+        pKF->mPrevKF = mpLastKeyFrame;
+        mpLastKeyFrame->mNextKF = pKF;
+    }
+
     if(mSensor!=System::MONOCULAR)
     {
         // 根据Tcw计算mRcw、mtcw和mRwc、mOw
@@ -2053,6 +2085,24 @@ void Tracking::UpdateLocalKeyFrames()
         }
 
     }
+
+    // // IMU模式下增加了临时的关键帧
+    // if(mSensor == System::WHEEL_STEREO && mvpLocalKeyFrames.size()<80)
+    // {
+    //     KeyFrame* tempKeyFrame = mCurrentFrame.mpLastKeyFrame;
+
+    //     const int Nd = 20;
+    //     for(int i=0; i<Nd; i++){
+    //         if (!tempKeyFrame)
+    //             break;
+    //         if(tempKeyFrame->mnTrackReferenceForFrame!=mCurrentFrame.mnId)
+    //         {
+    //             mvpLocalKeyFrames.push_back(tempKeyFrame);
+    //             tempKeyFrame->mnTrackReferenceForFrame=mCurrentFrame.mnId;
+    //             tempKeyFrame=tempKeyFrame->mPrevKF;
+    //         }
+    //     }
+    // }
 
     // Step 3：更新当前帧的参考关键帧，与自己共视程度最高的关键帧作为参考关键帧
     if(pKFmax)

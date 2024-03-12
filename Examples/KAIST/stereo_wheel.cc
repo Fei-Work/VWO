@@ -181,7 +181,7 @@ int main(int argc, char **argv)
         else if(ni>0)
             T = tframe-vTimestampsCam[ni-1];
         
-        T = T/10; //适用于该数据集的时间对齐到s        
+        // T = T/10; //适用于该数据集的时间对齐到s        
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
         

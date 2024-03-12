@@ -54,6 +54,10 @@ public:
     cv::Mat GetRotation();
     cv::Mat GetTranslation();
 
+    Eigen::Matrix<float,3,1> GetWheelPosition() const;
+    Eigen::Matrix<float,3,3> GetWheelRotation();
+    Sophus::SE3<float> GetWheelPose();
+
     // Bag of Words Representation
     void ComputeBoW();
 
@@ -188,6 +192,10 @@ public:
     const int mnMaxY;
     const cv::Mat mK;
 
+    KeyFrame* mPrevKF;
+    KeyFrame* mNextKF;
+
+    WHEEL::Preintegrated *mpWheelPreintegrated;
 
     // The following variables need to be accessed trough a mutex to be thread safe.
 protected:
@@ -196,6 +204,14 @@ protected:
     cv::Mat Tcw;
     cv::Mat Twc;
     cv::Mat Ow;
+
+    Sophus::SE3<float> mSophusTcw;
+    Eigen::Matrix<float, 3, 3> mSophusRcw;
+    Eigen::Matrix<float, 3, 1> mSophustcw;
+    Eigen::Matrix<float, 3, 3> mSophusRwc;
+    Eigen::Matrix<float, 3, 1> mSophustwc; //==mtwc
+
+    WHEEL::Calibration mWheelCalib;
 
     cv::Mat Cw; // Stereo middel point. Only for visualization
 

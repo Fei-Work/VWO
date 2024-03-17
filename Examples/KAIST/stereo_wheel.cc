@@ -35,9 +35,9 @@ void LoadEncoder(const string &strFile, vector<double> &vWheelEncoderLeft, vecto
 
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    if(argc != 4 && argc != 5 )
     {
-        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence （savingname）" << endl;
         return 1;
     }
 
@@ -207,8 +207,15 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM();
-    SLAM.SaveTrajectoryTUM();
+    if(argc != 5)
+    {
+        SLAM.SaveKeyFrameTrajectoryTUM();
+        SLAM.SaveTrajectoryTUM();
+    }
+    else{
+        SLAM.SaveKeyFrameTrajectoryTUM(argv[4]);
+        SLAM.SaveTrajectoryTUM(argv[4]);
+    }
 
     return 0;
 }

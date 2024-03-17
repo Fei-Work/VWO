@@ -34,19 +34,68 @@ void LoadImages(const string &strFile, vector<string> &vstrImageLeft, vector<str
 
 int main(int argc, char **argv)
 {
-    if(argc != 4)
+    if(argc != 4 && argc != 5 )
     {
-        cerr << endl << "Usage: ./mono_CULD path_to_vocabulary path_to_settings path_to_sequence" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence (savePath)" << endl;
         return 1;
     }
 
     // Retrieve paths to images
     vector<string> vstrImageLeft;
     vector<string> vstrImageRight;
+    vector<double> vTimestampsCam;
+   
+    string img_strFile = string(argv[3])+"/sensor_data/stereo_stamp_new.csv";
+    LoadImages(img_strFile, vstrImageLeft, vstrImageRight, vTimestampsCam);
 
-    vector<double> vTimestamps;
-    string strFile = string(argv[3])+"/sensor_data/stereo_stamp.csv";
-    LoadImages(strFile, vstrImageLeft, vstrImageRight, vTimestamps);
+    if(vstrImageLeft.empty() || vstrImageRight.empty())
+    {
+        cerr << "ERROR: No images in provided path." << endl;
+        return 1;
+    }
+
+    if(vstrImageLeft.size()!=vstrImageRight.size())
+    {
+        cerr << "ERROR: Different number of left and right images." << endl;
+        return 1;
+    }
+
+    // Read rectification parameters
+    cv::FileStorage fsSettings(argv[2], cv::FileStorage::READ);
+    if(!fsSettings.isOpened())
+    {
+        cerr << "ERROR: Wrong path to settings" << endl;
+        return -1;
+    }
+
+    cv::Mat K_l, K_r, P_l, P_r, R_l, R_r, D_l, D_r;
+    fsSettings["LEFT.K"] >> K_l;
+    fsSettings["RIGHT.K"] >> K_r;
+
+    fsSettings["LEFT.P"] >> P_l;
+    fsSettings["RIGHT.P"] >> P_r;
+
+    fsSettings["LEFT.R"] >> R_l;
+    fsSettings["RIGHT.R"] >> R_r;
+
+    fsSettings["LEFT.D"] >> D_l;
+    fsSettings["RIGHT.D"] >> D_r;
+
+    int rows_l = fsSettings["LEFT.height"];
+    int cols_l = fsSettings["LEFT.width"];
+    int rows_r = fsSettings["RIGHT.height"];
+    int cols_r = fsSettings["RIGHT.width"];
+
+    if(K_l.empty() || K_r.empty() || P_l.empty() || P_r.empty() || R_l.empty() || R_r.empty() || D_l.empty() || D_r.empty() ||
+            rows_l==0 || rows_r==0 || cols_l==0 || cols_r==0)
+    {
+        cerr << "ERROR: Calibration parameters to rectify stereo are missing!" << endl;
+        return -1;
+    }
+
+    cv::Mat M1l,M2l,M1r,M2r;
+    cv::initUndistortRectifyMap(K_l,D_l,R_l,P_l.rowRange(0,3).colRange(0,3),cv::Size(cols_l,rows_l),CV_32F,M1l,M2l);
+    cv::initUndistortRectifyMap(K_r,D_r,R_r,P_r.rowRange(0,3).colRange(0,3),cv::Size(cols_r,rows_r),CV_32F,M1r,M2r);
 
     int nImages = vstrImageLeft.size();
 
@@ -63,13 +112,13 @@ int main(int argc, char **argv)
     cout << "Images in the sequence: " << nImages << endl << endl;
 
     // Main loop
-    cv::Mat imLeft, imRight, left_BGR, right_BGR, left_GRAY, right_GRAY;
+    cv::Mat imLeft, imRight, left_BGR, right_BGR, left_GRAY, right_GRAY, imLeftRect, imRightRect;
     for(int ni=0; ni<nImages; ni++)
     {
         // Read image from file
         imLeft = cv::imread(string(argv[3]) + vstrImageLeft[ni],cv::IMREAD_GRAYSCALE);
         imRight = cv::imread(string(argv[3]) + vstrImageRight[ni],cv::IMREAD_GRAYSCALE);
-        double tframe = vTimestamps[ni];
+        double tframe = vTimestampsCam[ni];
 
         if(imLeft.empty())
         {
@@ -77,15 +126,25 @@ int main(int argc, char **argv)
                  << string(argv[3]) << "/" << vstrImageLeft[ni] << endl;
             return 1;
         }
+        if(imRight.empty())
+        {
+            cerr << endl << "Failed to load image at: "
+                 << string(vstrImageRight[ni]) << endl;
+            return 1;
+        }
 
         cv::cvtColor(imLeft, left_BGR, cv::COLOR_BayerRG2BGR);
         cv::cvtColor(imRight, right_BGR, cv::COLOR_BayerRG2BGR);
-        cv::cvtColor(left_BGR, left_GRAY, cv::COLOR_BGR2GRAY);
-        cv::cvtColor(right_BGR, right_GRAY, cv::COLOR_BGR2GRAY);
+
+        // cv::cvtColor(left_BGR, left_GRAY, cv::COLOR_BGR2GRAY);
+        // cv::cvtColor(right_BGR, right_GRAY, cv::COLOR_BGR2GRAY);
+
+        cv::remap(left_BGR,imLeftRect,M1l,M2l,cv::INTER_LINEAR);
+        cv::remap(right_BGR,imRightRect,M1r,M2r,cv::INTER_LINEAR);
 
         std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
         // Pass the image to the SLAM system
-        SLAM.TrackStereo(left_BGR,right_BGR,tframe);
+        SLAM.TrackStereo(imLeftRect, imRightRect,tframe);
 
         std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
@@ -96,15 +155,15 @@ int main(int argc, char **argv)
         // Wait to load the next frame // 手动设置帧数，所以记得要对其时间单位
         double T=0;
         if(ni<nImages-1)
-            T = vTimestamps[ni+1]-tframe;
+            T = vTimestampsCam[ni+1]-tframe;
         else if(ni>0)
-            T = tframe-vTimestamps[ni-1];
+            T = tframe-vTimestampsCam[ni-1];
         
-        T = T/1e10; //适用于该数据集的时间对齐到s        
+        // T = T/10; //适用于该数据集的时间对齐到s        
         if(ttrack<T)
             usleep((T-ttrack)*1e6);
-        
-        //todo: 检查是否即刻停止并保存结果
+
+        // 检查是否即刻停止并保存结果
         if(SLAM.CheckUserComand()){
             break;
         }
@@ -125,9 +184,15 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    SLAM.SaveKeyFrameTrajectoryTUM();
-    SLAM.SaveTrajectoryTUM();
-
+    if(argc != 5)
+    {
+        SLAM.SaveKeyFrameTrajectoryTUM();
+        SLAM.SaveTrajectoryTUM();
+    }
+    else{
+        SLAM.SaveKeyFrameTrajectoryTUM(argv[4]);
+        SLAM.SaveTrajectoryTUM(argv[4]);
+    }
     return 0;
 }
 
@@ -152,7 +217,7 @@ void LoadImages(const string &strFile,  vector<string> &vstrImageLeft, vector<st
             string s_left;
             string s_right;
             ss >> t;
-            vTimestamps.push_back(t);
+            vTimestamps.push_back(t/1e9);
 
             s_left = "/image/stereo_left/" + s + ".png";
             s_right = "/image/stereo_right/" + s + ".png";

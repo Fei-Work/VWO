@@ -16,6 +16,7 @@
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban30-gangnam
 
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan
+./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan
 
 
 ### evo

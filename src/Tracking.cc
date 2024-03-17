@@ -231,23 +231,34 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
             cvtColor(imGrayRight,imGrayRight,CV_BGRA2GRAY);
         }
     }
-    if(mState == NO_IMAGES_YET){
+    if(mSensor == System::WHEEL_STEREO){
+        if(mState == NO_IMAGES_YET){
         mCurrentFrame = Frame(
             mImGray, imGrayRight,
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
             mK,mDistCoef,mbf,mThDepth,NULL, *mpCalib);
-    }
-    else{
+        }
+        else{
     // 此步骤已经完成当前帧Frame的初匹配
-        mCurrentFrame = Frame(
+            mCurrentFrame = Frame(
             mImGray, imGrayRight,
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
             mK,mDistCoef,mbf,mThDepth,&mLastFrame, *mpCalib);
+        }
     }
+    else{
+        mCurrentFrame = Frame(
+            mImGray, imGrayRight,
+            timestamp,
+            mpORBextractorLeft,mpORBextractorRight,
+            mpORBVocabulary,
+            mK,mDistCoef,mbf,mThDepth);
+    }
+
 
     // Track();
     TrackWithWheel();
@@ -605,11 +616,11 @@ bool Tracking::PredictStateWheel()
 
 void Tracking::TrackWithWheel()
 {
-    if(mSensor!=System::WHEEL_STEREO)
-    {
-        cerr << "ERROR: you called TrackWithWheel but input sensor was not set to STEREO_WHEEL" << endl;
-        exit(-1);
-    }
+    // if(mSensor!=System::WHEEL_STEREO)
+    // {
+    //     cerr << "ERROR: you called TrackWithWheel but input sensor was not set to STEREO_WHEEL" << endl;
+    //     exit(-1);
+    // }
 
     if(mSensor==System::WHEEL_STEREO)
     {
@@ -681,7 +692,7 @@ void Tracking::TrackWithWheel()
             }
         }
     
-        if(!bOK || mState==DETERIORATION)
+        if((!bOK && mSensor==System::WHEEL_STEREO) || mState==DETERIORATION)
         {
             cout<<"DETERIORATION"<<endl;
             mState = DETERIORATION;
@@ -1618,8 +1629,10 @@ bool Tracking::TrackLocalMap()
     // Optimize Pose
     // 在这个函数之前，在 Relocalization、TrackReferenceKeyFrame、TrackWithMotionModel 中都有位姿优化，
     // Step 3：前面新增了更多的匹配关系，BA优化得到更准确的位姿
-    // Optimizer::PoseOptimization(&mCurrentFrame);
-    Optimizer::PoseOptimizationWithWheel(&mCurrentFrame);
+    if(mSensor == System::WHEEL_STEREO)
+        Optimizer::PoseOptimizationWithWheel(&mCurrentFrame);
+    else
+        Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
 
     // Update MapPoints Statistics

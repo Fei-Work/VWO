@@ -310,7 +310,7 @@ int Optimizer::PoseOptimizationWithWheel(Frame *pFrame)
     g2o::VertexSE3Expmap* vLastSE3 = new g2o::VertexSE3Expmap();
     vLastSE3->setEstimate(Converter::toSE3Quat(pFrame->mpPrevFrame->mTcw));
     vLastSE3->setId(1);
-    vLastSE3->setFixed(false);
+    vLastSE3->setFixed(true);
     optimizer.addVertex(vLastSE3);
 
     // Set the edge between them

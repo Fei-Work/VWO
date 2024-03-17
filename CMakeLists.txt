@@ -131,9 +131,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/Examples/KAIST)
 # Examples/KAIST/mono.cc)
 # target_link_libraries(mono ${PROJECT_NAME})
 
-# add_executable(stereo
-# Examples/KAIST/stereo.cc)
-# target_link_libraries(stereo ${PROJECT_NAME})
+add_executable(stereo
+Examples/KAIST/stereo.cc)
+target_link_libraries(stereo ${PROJECT_NAME})
 
 add_executable(stereo_wheel
 Examples/KAIST/stereo_wheel.cc)

@@ -447,6 +447,38 @@ void System::CreateResultDir()
     ResultDirName = dirName1st + "/" + dirName2nd + "/" ;
 }
 
+void System::CreateResultDir(const string filePath)
+{
+    if(ResultDirName.length()!=0)
+        return;
+    // 判断结果文件夹是否存在
+	// string dirName("result");
+	fs::path url(dirName1st);
+	if (!fs::exists(url)) {
+		cout<< "result not exist" << "\n";
+        // 创建单层目录
+	    bool okey = fs::create_directory(dirName1st);
+	    cout << "create_directory(" << dirName1st << "), result=" << okey << "\n";
+	}
+	else {
+		cout << "directory'result' exist" << "\n";
+	}
+
+    //检查二级目录
+    fs::path url2(dirName1st + "/"+ filePath);
+    if (!fs::exists(url2)) {
+		cout << dirName1st + "/"+ filePath << "not exist" << "\n";
+        // 创建单层目录
+	    bool okey = fs::create_directory(dirName1st + "/"+ filePath);
+	    cout << "create_directory(" << dirName1st + "/"+ filePath << "), result=" << okey << "\n";
+	}
+	else {
+		cout << "directory:" << dirName1st + "/"+ filePath << " exist" << "\n";
+	}
+
+    ResultDirName = dirName1st + "/" + filePath + "/" ;
+}
+
 string System::GetResultDir()
 {
     return ResultDirName;
@@ -514,10 +546,110 @@ void System::SaveTrajectoryTUM()
     cout << endl << "trajectory saved!" << endl;
 }
 
+void System::SaveTrajectoryTUM(const string pathName)
+{
+    CreateResultDir(pathName);
+    string filename = ResultDirName + "TrajectoryTUM.txt";
+    cout << endl << "Saving camera trajectory to " << filename << " ..." << endl;
+    if(mSensor==MONOCULAR)
+    {
+        cerr << "ERROR: SaveTrajectoryTUM cannot be used for monocular." << endl;
+        return;
+    }
+
+    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+
+    // Transform all keyframes so that the first keyframe is at the origin.
+    // After a loop closure the first keyframe might not be at the origin.
+    cv::Mat Two = vpKFs[0]->GetPoseInverse();
+
+    ofstream f;
+    f.open(filename.c_str());
+    f << fixed;
+
+    // Frame pose is stored relative to its reference keyframe (which is optimized by BA and pose graph).
+    // We need to get first the keyframe pose and then concatenate the relative transformation.
+    // Frames not localized (tracking failure) are not saved.
+
+    // For each frame we have a reference keyframe (lRit), the timestamp (lT) and a flag
+    // which is true when tracking failed (lbL).
+    list<ORB_SLAM2::KeyFrame*>::iterator lRit = mpTracker->mlpReferences.begin();
+    list<double>::iterator lT = mpTracker->mlFrameTimes.begin();
+    list<bool>::iterator lbL = mpTracker->mlbLost.begin();
+    for(list<cv::Mat>::iterator lit=mpTracker->mlRelativeFramePoses.begin(),
+        lend=mpTracker->mlRelativeFramePoses.end();lit!=lend;lit++, lRit++, lT++, lbL++)
+    {
+        if(*lbL)
+            continue;
+
+        KeyFrame* pKF = *lRit;
+
+        cv::Mat Trw = cv::Mat::eye(4,4,CV_32F);
+
+        // If the reference keyframe was culled, traverse the spanning tree to get a suitable keyframe.
+        while(pKF->isBad())
+        {
+            Trw = Trw*pKF->mTcp;
+            pKF = pKF->GetParent();
+        }
+
+        Trw = Trw*pKF->GetPose()*Two;
+
+        cv::Mat Tcw = (*lit)*Trw;
+        cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t();
+        cv::Mat twc = -Rwc*Tcw.rowRange(0,3).col(3);
+
+        vector<float> q = Converter::toQuaternion(Rwc);
+
+        f << *lT << " " <<  setprecision(9) << twc.at<float>(0) << " " << twc.at<float>(1) << " " << twc.at<float>(2) << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+    }
+    f.close();
+    cout << endl << "trajectory saved!" << endl;
+}
+
 
 void System::SaveKeyFrameTrajectoryTUM()
 {
     CreateResultDir();
+    string filename = ResultDirName + "KeyframeTrajectoryTUM.txt";
+    cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+
+    vector<KeyFrame*> vpKFs = mpMap->GetAllKeyFrames();
+    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+
+    // Transform all keyframes so that the first keyframe is at the origin.
+    // After a loop closure the first keyframe might not be at the origin.
+    //cv::Mat Two = vpKFs[0]->GetPoseInverse();
+
+    ofstream f;
+    f.open(filename.c_str());
+    f << fixed;
+
+    for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        KeyFrame* pKF = vpKFs[i];
+
+       // pKF->SetPose(pKF->GetPose()*Two);
+
+        if(pKF->isBad())
+            continue;
+
+        cv::Mat R = pKF->GetRotation().t();
+        vector<float> q = Converter::toQuaternion(R);
+        cv::Mat t = pKF->GetCameraCenter();
+        f << pKF->mTimeStamp << setprecision(7) << " " << t.at<float>(0) << " " << t.at<float>(1) << " " << t.at<float>(2)
+          << " " << q[0] << " " << q[1] << " " << q[2] << " " << q[3] << endl;
+
+    }
+
+    f.close();
+    cout << endl << "trajectory saved!" << endl;
+}
+
+void System::SaveKeyFrameTrajectoryTUM(const string pathName)
+{
+    CreateResultDir(pathName);
     string filename = ResultDirName + "KeyframeTrajectoryTUM.txt";
     cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
 

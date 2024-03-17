@@ -1,0 +1,177 @@
+%YAML:1.0
+
+#--------------------------------------------------------------------------------------------
+# Camera Parameters. Adjust them!
+#--------------------------------------------------------------------------------------------
+
+# Camera calibration and distortion parameters (OpenCV) 
+Camera.fx: 7.7537235550066748e+02
+Camera.fy: 7.7537235550066748e+02
+Camera.cx: 6.1947309112548828e+02
+Camera.cy: 2.5718049049377441e+02
+
+
+Camera.k1: 0
+Camera.k2: 0
+Camera.p1: 0
+Camera.p2: 0
+
+
+Camera.width: 1280
+Camera.height: 560
+
+# Camera frames per second 
+Camera.fps: 10.0
+
+# stereo baseline times fx  f*x/1000
+Camera.bf: 368.41755
+
+# 其为相机的基线×相机的焦距。
+# 我的基线：norm(stereoParams.TranslationOfCamera2)=475.1492
+# fx = 7.7537235550066748e+02
+# 475.1492 * 7.7537235550066748e+02 = 368.417554418258*1000
+
+
+
+# Color order of the images (0: BGR, 1: RGB. It is ignored if images are grayscale)
+Camera.RGB: 1
+
+# Close/Far threshold. Baseline times.
+ThDepth: 35
+
+# 深度阈值，不是一个精确的数值
+# 自己粗略估计一个相机可以良好显示的最大距离值为s = 10  
+# 如果fx = 100, Camera.bf = 20
+# 那么 ThDepth = s*fx/Camera.bf = 10 *100 /20 = 50
+# 将你自己的参数带入上述公式 可以得到大概的阈值。
+
+
+
+# --------------------------------------------------------------------------------------------
+# Stereo Rectification. Only if you need to pre-rectify the images.
+# Camera.fx, .fy, etc must be the same as in LEFT.P
+# --------------------------------------------------------------------------------------------
+LEFT.height: 560
+LEFT.width: 1280
+LEFT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [ -5.6143027800000002e-02, 1.3952563200000001e-01,
+       -1.2155906999999999e-03, -9.7281389999999998e-04,
+       -8.0878168799999997e-02 ]
+LEFT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 8.1690378992770002e+02, 5.0510166700000003e-01,
+       6.0850726281690004e+02, 0., 8.1156803828490001e+02,
+       2.6347599764440002e+02, 0., 0., 1. ]
+LEFT.R:  !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 9.9996942080938533e-01, 3.6208456669806118e-04,
+       -7.8119357978017733e-03, -3.4412461339106772e-04,
+       9.9999729518344416e-01, 2.3002617343453663e-03,
+       7.8127475572218850e-03, -2.2975031148170580e-03,
+       9.9996684067775188e-01 ]
+LEFT.P:  !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [ 7.7537235550066748e+02, 0., 6.1947309112548828e+02, 0., 0.,
+       7.7537235550066748e+02, 2.5718049049377441e+02, 0., 0., 0., 1.,
+       0. ]
+
+RIGHT.height: 560
+RIGHT.width: 1280
+RIGHT.D: !!opencv-matrix
+   rows: 1
+   cols: 5
+   dt: d
+   data: [ -5.4921981799999998e-02, 1.4243657430000001e-01,
+       7.5412299999999996e-05, -6.7560530000000001e-04,
+       -8.5665408299999996e-02 ]
+RIGHT.K: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 8.1378205539589999e+02, 3.4880336220000002e-01,
+       6.1386419539320002e+02, 0., 8.0852165574269998e+02,
+       2.4941049348650000e+02, 0., 0., 1. ]
+RIGHT.R:  !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: d
+   data: [ 9.9998812489422739e-01, 2.4089155522231892e-03,
+       -4.2364131513853301e-03, -2.4186483057924992e-03,
+       9.9999444433315865e-01, -2.2937835970734117e-03,
+       4.2308640843048539e-03, 2.3040027516418276e-03,
+       9.9998839561287933e-01 ]
+RIGHT.P:  !!opencv-matrix
+   rows: 3
+   cols: 4
+   dt: d
+   data: [ 7.7537235550066748e+02, 0., 6.1947309112548828e+02,
+       -3.6841758740842312e+02, 0., 7.7537235550066748e+02,
+       2.5718049049377441e+02, 0., 0., 0., 1., 0. ]
+
+
+#--------------------------------------------------------------------------------------------
+# Encoder Parameters
+#--------------------------------------------------------------------------------------------
+Encoder.resolution: 4096
+Encoder.leftWheelDiameter: 0.623479
+Encoder.rightWheelDiameter: 0.622806
+Encoder.wheelBase: 1.52439
+
+#--------------------------------------------------------------------------------------------
+# Camara to Encoder
+#--------------------------------------------------------------------------------------------
+
+Tvc:  !!opencv-matrix
+   rows: 4
+   cols: 4
+   dt: f
+   data: [-6.80499e-03, -1.53215e-02, 9.9985e-01, 1.64239e+00,
+          -9.99977e-01, 3.34627e-04, -6.80066e-03, 2.47401e-01, 
+          -2.30383e-04, -9.99883e-01, -1.53234e-02, 1.58411e+00,
+          0.,0.,0.,1]
+
+#--------------------------------------------------------------------------------------------
+# ORB Parameters
+#--------------------------------------------------------------------------------------------
+
+# ORB Extractor: Number of features per image
+ORBextractor.nFeatures: 2000
+
+# ORB Extractor: Scale factor between levels in the scale pyramid 	
+ORBextractor.scaleFactor: 1.2
+
+# ORB Extractor: Number of levels in the scale pyramid	
+ORBextractor.nLevels: 8
+
+# ORB Extractor: Fast threshold
+# Image is divided in a grid. At each cell FAST are extracted imposing a minimum response.
+# Firstly we impose iniThFAST. If no corners are detected we impose a lower value minThFAST
+# You can lower these values if your images have low contrast（对比度）			
+ORBextractor.iniThFAST: 18
+ORBextractor.minThFAST: 7
+# ORBextractor.iniThFAST: 16
+# ORBextractor.minThFAST: 5
+
+#--------------------------------------------------------------------------------------------
+# Viewer Parameters
+#--------------------------------------------------------------------------------------------
+Viewer.KeyFrameSize: 0.6
+Viewer.KeyFrameLineWidth: 2
+Viewer.GraphLineWidth: 1
+Viewer.PointSize:2
+Viewer.CameraSize: 0.7
+Viewer.CameraLineWidth: 3
+Viewer.ViewpointX: 0
+Viewer.ViewpointY: -100
+Viewer.ViewpointZ: -0.1
+Viewer.ViewpointF: 2000
+

@@ -49,6 +49,8 @@ Viewer::Viewer(System* pSystem, FrameDrawer *pFrameDrawer, MapDrawer *pMapDrawer
     mViewpointY = fSettings["Viewer.ViewpointY"];
     mViewpointZ = fSettings["Viewer.ViewpointZ"];
     mViewpointF = fSettings["Viewer.ViewpointF"];
+
+    resetTimes = 0;
 }
 
 void Viewer::Run()
@@ -167,6 +169,8 @@ void Viewer::Run()
 
         if(menuReset)
         {
+            ++resetTimes;
+            mpSystem->SaveBodyKeyFrameTrajectoryTUM(mpSystem->GetResultDir() + to_string(resetTimes));
             menuShowGraph = true;
             menuShowKeyFrames = true;
             menuShowPoints = true;

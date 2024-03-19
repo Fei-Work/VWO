@@ -191,6 +191,7 @@ int main(int argc, char **argv)
     }
     else{
         SLAM.SaveKeyFrameTrajectoryTUM(argv[4]);
+        SLAM.SaveBodyKeyFrameTrajectoryTUM(argv[4]);
         SLAM.SaveTrajectoryTUM(argv[4]);
     }
     return 0;

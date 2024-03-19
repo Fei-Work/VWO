@@ -21,6 +21,7 @@ Eigen::Matrix3f RightJacobianSO3(const float x, const float y, const float z);
 class Calibration{
 public:
     Calibration(){}
+    Calibration(const Sophus::SE3f &Tbc);
     Calibration(const Sophus::SE3f &Tbc, const float &_eResolution, const float &_eLeftWheelDiameter, const float &_eRightWheelDiameter, const float & _eWheelBase)
     {
         Set(Tbc,_eResolution,_eLeftWheelDiameter, _eRightWheelDiameter, _eWheelBase);

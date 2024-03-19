@@ -116,6 +116,7 @@ public:
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveTrajectoryTUM();
     void SaveTrajectoryTUM(const string pathName);
+    
 
     // Save keyframe poses in the TUM RGB-D dataset format.
     // This method works for all sensor input.
@@ -124,6 +125,7 @@ public:
     void SaveKeyFrameTrajectoryTUM();
 
     void SaveKeyFrameTrajectoryTUM(const string pathName);
+    void SaveBodyKeyFrameTrajectoryTUM(const string pathName);
 
     // Save camera trajectory in the KITTI dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.

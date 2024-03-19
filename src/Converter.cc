@@ -107,6 +107,14 @@ cv::Mat Converter::toCvSE3(const Eigen::Matrix<double,3,3> &R, const Eigen::Matr
     return cvMat.clone();
 }
 
+cv::Mat Converter::toCvSE3(const Sophus::SE3<float> T)
+{
+    Eigen::Matrix<double,3,3> R = T.rotationMatrix().cast<double>();
+    Eigen::Matrix<double,3,1> p = T.translation().cast<double>();
+    
+    return toCvSE3(R, p);
+}
+
 Eigen::Matrix<double,3,1> Converter::toVector3d(const cv::Mat &cvVector)
 {
     Eigen::Matrix<double,3,1> v;

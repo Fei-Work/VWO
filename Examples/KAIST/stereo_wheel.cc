@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 {
     if(argc != 4 && argc != 5 )
     {
-        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence （savingname）" << endl;
+        cerr << endl << "Usage: ./stereo_wheel path_to_vocabulary path_to_settings path_to_sequence (savePath)" << endl;
         return 1;
     }
 
@@ -214,6 +214,7 @@ int main(int argc, char **argv)
     }
     else{
         SLAM.SaveKeyFrameTrajectoryTUM(argv[4]);
+        SLAM.SaveBodyKeyFrameTrajectoryTUM(argv[4]);
         SLAM.SaveTrajectoryTUM(argv[4]);
     }
 

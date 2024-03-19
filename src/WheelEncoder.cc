@@ -183,6 +183,13 @@ void WheelEncoderDatas::clear()
     
 }
 
+
+Calibration::Calibration(const Sophus::SE3f &Tbc)
+{
+    mTbc = Tbc;
+    mTcb = mTbc.inverse();
+}
+
 Calibration::Calibration(const Calibration &Calib)
 {
     eResolution = Calib.eResolution;

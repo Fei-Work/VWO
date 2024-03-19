@@ -15,9 +15,13 @@
 
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban30-gangnam
 
+#### 26
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan
 ./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan
 
+#### 22
+./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_22.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban22-highway
+./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_22.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban22-highway
 
 ### evo
 evo_traj tum --ref=/home/liu/SLAM_WORK/evo/test/global_poseTUM.txt /home/liu/SLAM_WORK/evo/test/KeyframeTrajectoryTUMchange.txt -a  -p

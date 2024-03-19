@@ -137,6 +137,13 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
         cout << "- rightWheelDiameter: " << eRightWheelDiameter << endl;
         cout << "- wheelBase: " << eWheelBase << endl;
     }
+    else{
+        cv::Mat VehicleStereoT;
+        fSettings["Tvc"] >> VehicleStereoT;
+        Sophus::SE3<float> Tbc = Converter::toSophus(VehicleStereoT);
+
+        mpCalib = new WHEEL::Calibration(Tbc);
+    }
 
 
     // Load ORB parameters
@@ -231,34 +238,23 @@ cv::Mat Tracking::GrabImageStereo(const cv::Mat &imRectLeft, const cv::Mat &imRe
             cvtColor(imGrayRight,imGrayRight,CV_BGRA2GRAY);
         }
     }
-    if(mSensor == System::WHEEL_STEREO){
-        if(mState == NO_IMAGES_YET){
+    if(mState == NO_IMAGES_YET){
         mCurrentFrame = Frame(
             mImGray, imGrayRight,
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
             mK,mDistCoef,mbf,mThDepth,NULL, *mpCalib);
-        }
-        else{
-    // 此步骤已经完成当前帧Frame的初匹配
-            mCurrentFrame = Frame(
-            mImGray, imGrayRight,
-            timestamp,
-            mpORBextractorLeft,mpORBextractorRight,
-            mpORBVocabulary,
-            mK,mDistCoef,mbf,mThDepth,&mLastFrame, *mpCalib);
-        }
     }
     else{
+    // 此步骤已经完成当前帧Frame的初匹配
         mCurrentFrame = Frame(
             mImGray, imGrayRight,
             timestamp,
             mpORBextractorLeft,mpORBextractorRight,
             mpORBVocabulary,
-            mK,mDistCoef,mbf,mThDepth);
+            mK,mDistCoef,mbf,mThDepth,&mLastFrame, *mpCalib);
     }
-
 
     // Track();
     TrackWithWheel();
@@ -361,7 +357,7 @@ void Tracking::WheelTrack()
     }
     
     if(mState==NOT_INITIALIZED){
-        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));    
+        mCurrentFrame.SetPose(Converter::toCvSE3(mpCalib->mTcb));    
         mpMapDrawer->SetCurrentCameraPose(mCurrentFrame.mTcw);  
         if(WheelNeedNewKeyFrame()){
             CreateNewKeyFrame();
@@ -390,14 +386,14 @@ void Tracking::WheelTrack()
         if(vPulseCount.size()>0)
             mLastPulseCount = vPulseCount[vPulseCount.size()-1];
     }
-    cout.precision(4);
-    double time = 0;
-    if(vPulseCount.size()>0){
-        time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+09);
-    }
-    cout<<"Time:"<<time<<",";
-    cout<<", (TcwX,TcwY,TcwZ):"<<mCurrentFrame.mTcw.at<float>(0,3)<<", "<<mCurrentFrame.mTcw.at<float>(1,3)<<", "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
-    cout<<", (TbwX,TbwY,TbwZ):"<<mCurrentFrame.GetWheelPosition()(0)<<", "<<mCurrentFrame.GetWheelPosition()(1)<<", "<<mCurrentFrame.GetWheelPosition()(2)<<endl;
+    // cout.precision(4);
+    // double time = 0;
+    // if(vPulseCount.size()>0){
+    //     time = (vPulseCount[vPulseCount.size()-1].time-1.55919579574054E+09);
+    // }
+    // cout<<"Time:"<<time<<",";
+    // cout<<", (TcwX,TcwY,TcwZ):"<<mCurrentFrame.mTcw.at<float>(0,3)<<", "<<mCurrentFrame.mTcw.at<float>(1,3)<<", "<<mCurrentFrame.mTcw.at<float>(2,3)<<endl;
+    // cout<<", (TbwX,TbwY,TbwZ):"<<mCurrentFrame.GetWheelPosition()(0)<<", "<<mCurrentFrame.GetWheelPosition()(1)<<", "<<mCurrentFrame.GetWheelPosition()(2)<<endl;
 }
 
 bool Tracking::OnlyWheelTrack()
@@ -1171,7 +1167,8 @@ void Tracking::StereoInitialization()
     {
         // Set Frame pose to the origin
         // 设定初始位姿
-        mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+        // mCurrentFrame.SetPose(cv::Mat::eye(4,4,CV_32F));
+        mCurrentFrame.SetPose(Converter::toCvSE3(mpCalib->mTcb));
 
         // Create KeyFrame
         // KeyFrame包含Frame、地图3D点、以及BoW

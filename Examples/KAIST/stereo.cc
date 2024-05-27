@@ -101,7 +101,12 @@ int main(int argc, char **argv)
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
     // 初始化各个线程，localmapping、loopClosing处于waiting姿态（分别为等待关键帧）
-    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true);
+    string dir = " ";
+    if(argc == 5)
+    {
+        dir = argv[4];
+    }
+    ORB_SLAM2::System SLAM(argv[1],argv[2],ORB_SLAM2::System::STEREO,true, dir);
 
     // Vector for tracking time statistics
     vector<float> vTimesTrack;
@@ -184,16 +189,11 @@ int main(int argc, char **argv)
     cout << "mean tracking time: " << totaltime/nImages << endl;
 
     // Save camera trajectory
-    if(argc != 5)
-    {
-        SLAM.SaveKeyFrameTrajectoryTUM();
-        SLAM.SaveTrajectoryTUM();
-    }
-    else{
-        SLAM.SaveKeyFrameTrajectoryTUM(argv[4]);
-        SLAM.SaveBodyKeyFrameTrajectoryTUM(argv[4]);
-        SLAM.SaveTrajectoryTUM(argv[4]);
-    }
+
+    SLAM.SaveKeyFrameTrajectoryTUM();
+    SLAM.SaveBodyKeyFrameTrajectoryTUM();
+    SLAM.SaveTrajectoryTUM();
+
     return 0;
 }
 

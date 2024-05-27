@@ -12,6 +12,9 @@ MESSAGE("Build type: " ${CMAKE_BUILD_TYPE})
 # set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}  -Wall  -O3")
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall   -O3")
 
+# set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -w")
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -w")
+
 # Check C++11 or C++0x support
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
@@ -45,7 +48,7 @@ if(NOT OpenCV_FOUND)
    endif()
 endif()
 
-find_package(Eigen3 3.2.1 REQUIRED)
+find_package(Eigen3 3.3.0 REQUIRED)
 find_package(Pangolin REQUIRED)
 
 include_directories(

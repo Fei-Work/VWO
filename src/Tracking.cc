@@ -189,6 +189,8 @@ Tracking::Tracking(System *pSys, ORBVocabulary* pVoc, FrameDrawer *pFrameDrawer,
     if(sensor==System::WHEEL_STEREO)
         mpWheelPreintegratedFromLastKF = new WHEEL::Preintegrated(*mpCalib);
     
+    wheelframecount = 0;
+    deteriorationDistance = 0;
 }
 
 void Tracking::SetLocalMapper(LocalMapping *pLocalMapper)
@@ -690,6 +692,18 @@ void Tracking::TrackWithWheel()
     
         if((!bOK && mSensor==System::WHEEL_STEREO) || mState==DETERIORATION)
         {
+            if(mState!=DETERIORATION){
+                wheelframecount = 0;
+                deteriorationDistance = 0;
+            }
+            else{
+                ++wheelframecount;
+                deteriorationDistance = deteriorationDistance + 1;
+            }
+            if(wheelframecount>=30)
+            {
+                mpSystem->Reset();
+            }
             cout<<"DETERIORATION"<<endl;
             mState = DETERIORATION;
             bOK = OnlyWheelTrack();
@@ -762,10 +776,6 @@ void Tracking::TrackWithWheel()
             if(NeedNewKeyFrame())
                 CreateNewKeyFrame();
 
-            // We allow points with high innovation (considererd outliers by the Huber Function)
-            // pass to the new keyframe, so that bundle adjustment will finally decide
-            // if they are outliers or not. We don't want next frame to estimate its position
-            // with those points so we discard them in the frame.
             // 作者这里说允许在BA中被Huber核函数判断为外点的传入新的关键帧中，让后续的BA来审判他们是不是真正的外点
             // 但是估计下一帧位姿的时候我们不想用这些外点，所以删掉
 
@@ -776,6 +786,11 @@ void Tracking::TrackWithWheel()
                 if(mCurrentFrame.mvpMapPoints[i] && mCurrentFrame.mvbOutlier[i])
                     mCurrentFrame.mvpMapPoints[i]=static_cast<MapPoint*>(NULL);
             }
+        }
+        else{
+            if (mSensor == System::WHEEL_STEREO)
+                if(WheelNeedNewKeyFrame())
+                    CreateNewKeyFrame();
         }
 
         //更新显示中的位姿
@@ -1628,6 +1643,7 @@ bool Tracking::TrackLocalMap()
     // Step 3：前面新增了更多的匹配关系，BA优化得到更准确的位姿
     if(mSensor == System::WHEEL_STEREO)
         Optimizer::PoseOptimizationWithWheel(&mCurrentFrame);
+        // Optimizer::PoseOptimization(&mCurrentFrame);
     else
         Optimizer::PoseOptimization(&mCurrentFrame);
     mnMatchesInliers = 0;
@@ -1688,8 +1704,6 @@ bool Tracking::CheckChooseWheel()
 
 bool Tracking::WheelNeedNewKeyFrame()
 {
-    static int wheelframecount = 0;
-    wheelframecount++;
     if(wheelframecount%4 ==1){
         return true;
     }

@@ -15,6 +15,10 @@
 
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban30-gangnam
 
+#### 33
+./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_30.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban33-yeouido 
+./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_30.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban33-yeouido
+
 #### 26
 ./Examples/KAIST/stereo_wheel Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_wheel_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan
 ./Examples/KAIST/stereo Vocabulary/ORBvoc.txt Examples/KAIST/KAIST_stereo_26.yaml /media/liu/KINGSTON/Complex_Urban_LiDAR_Data_Set/urban26-dongtan

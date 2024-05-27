@@ -65,7 +65,7 @@ public:
 public:
 
     // Initialize the SLAM system. It launches the Local Mapping, Loop Closing and Viewer threads.
-    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true);
+    System(const string &strVocFile, const string &strSettingsFile, const eSensor sensor, const bool bUseViewer = true, string mdir = " ");
 
     // Proccess the given stereo frame. Images must be synchronized and rectified.
     // Input images: RGB (CV_8UC3) or grayscale (CV_8U). RGB is converted to grayscale.
@@ -99,6 +99,8 @@ public:
 
     // Reset the system (clear map)
     void Reset();
+    int GetResetTimes();
+    void AddRestTimes();
 
     // All threads will be requested to finish.
     // It waits until all threads have finished.
@@ -115,17 +117,14 @@ public:
     // Call first Shutdown()
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveTrajectoryTUM();
-    void SaveTrajectoryTUM(const string pathName);
     
-
     // Save keyframe poses in the TUM RGB-D dataset format.
     // This method works for all sensor input.
     // Call first Shutdown()
     // See format details at: http://vision.in.tum.de/data/datasets/rgbd-dataset
     void SaveKeyFrameTrajectoryTUM();
 
-    void SaveKeyFrameTrajectoryTUM(const string pathName);
-    void SaveBodyKeyFrameTrajectoryTUM(const string pathName);
+    void SaveBodyKeyFrameTrajectoryTUM();
 
     // Save camera trajectory in the KITTI dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.
@@ -192,6 +191,9 @@ private:
     // Reset flag
     std::mutex mMutexReset;
     bool mbReset;
+
+    std::mutex mMutexResetTimes;
+    int resetTimes;
 
     // Change mode flags
     std::mutex mMutexMode;

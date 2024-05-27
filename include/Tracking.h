@@ -249,6 +249,10 @@ protected:
     bool mbRGB;
 
     list<MapPoint*> mlpTemporalPoints;
+
+private:
+    int wheelframecount;
+    double deteriorationDistance;
 };
 
 } //namespace ORB_SLAM
